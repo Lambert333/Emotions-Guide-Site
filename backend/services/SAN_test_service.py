@@ -2,6 +2,7 @@ from typing import List, Dict
 import firebase_admin
 from firebase_admin import db
 from datetime import datetime
+import pytz
 
 class SanQuestion:
     def __init__(self, positive_pole: str, negative_pole: str, score: int = 0):
@@ -306,3 +307,84 @@ class SANTestService:
         ref = db.reference(f'Users/{user_id}/TestResults')
         new_ref = ref.push(result_data)
         return new_ref.key is not None  # Успех если ключ создан
+
+    def prepare_san_data_for_ai(self, results: list, username: str, time_data: dict) -> str:
+        """
+        Форматирует данные САН для ИИ: JSON с тестами (до 25, sorted desc by timestamp),
+        динамикой (тренды, сравнение с нормой 4-7), time_of_day/season для каждого, current time_data.
+        Если results пусто, возвращает пустой JSON с флагом.
+        """
+        from backend.utils.time_utils import TimeAndSeasonData
+        import json
+        from datetime import datetime
+
+        if not results:
+            return json.dumps({
+                "username": username,
+                "tests": [],
+                "has_results": False,
+                "current": time_data
+            })
+
+        # Sorted desc by timestamp
+        sorted_results = sorted(results, key=lambda x: x.get('timestamp', 0), reverse=True)[:5]
+
+        tests = []
+        for i, res in enumerate(sorted_results):
+            ts = res.get('timestamp', 0)
+            if ts:
+                # Time of day for this test
+                test_tz = pytz.timezone('Asia/Yekaterinburg')
+                test_dt = datetime.fromtimestamp(ts / 1000, test_tz)
+                hour = test_dt.hour
+                time_of_day = "утро" if 6 <= hour < 12 else "день" if 12 <= hour < 18 else "вечер" if 18 <= hour < 23 else "ночь"
+                month = test_dt.month
+                season = "зима" if month in [12, 1, 2] else "весна" if month in [3, 4, 5] else "лето" if month in [6, 7, 8] else "осень"
+            else:
+                time_of_day = season = "unknown"
+
+            # Trend: comparison with previous test
+            trend = {}
+            if i > 0:
+                prev = tests[-1]
+                for key in ['moodScore', 'wellbeingScore', 'activityScore']:
+                    if key in res and key in prev:
+                        change = res[key] - prev[key]
+                        if change > 0:
+                            trend[key.replace('Score', '')] = "подросло/улучшилось/повысилось"
+                        elif change < 0:
+                            trend[key.replace('Score', '')] = "упало/ухудшилось/снизилось"
+                        else:
+                            trend[key.replace('Score', '')] = "стабильно"
+
+            # Norm status
+            wellbeing = res.get('wellbeingScore', 4)
+            activity = res.get('activityScore', 4)
+            mood = res.get('moodScore', 4)
+            norm_status = {
+                "wellbeing": "норма" if 4 <= wellbeing <= 7 else "ниже нормы",
+                "activity": "норма" if 4 <= activity <= 7 else "ниже нормы",
+                "mood": "норма" if 4 <= mood <= 7 else "ниже нормы"
+            }
+
+            tests.append({
+                "wellbeingScore": wellbeing,
+                "activityScore": activity,
+                "moodScore": mood,
+                "timestamp": ts,
+                "timeOfDay": time_of_day,
+                "season": season,
+                "date": test_dt.strftime("%Y-%m-%d %H:%M") if ts else "unknown",
+                "trend": trend,
+                "normStatus": norm_status
+            })
+
+        data = {
+            "username": username,
+            "tests": tests,
+            "has_results": True,
+            "current": time_data,
+            "dynamics": f"Динамика: {trend.get('mood', 'стабильно')} настроение с предыдущего теста." if len(tests) > 1 else "Первый тест."
+        }
+
+        return json.dumps(data, ensure_ascii=False, separators=(',', ':'))  # Компактный JSON без indent

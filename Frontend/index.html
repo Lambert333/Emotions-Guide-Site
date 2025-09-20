@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Тест API Analyze Emotions</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      input,
+      textarea,
+      button {
+        margin: 10px 0;
+        padding: 8px;
+        width: 300px;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      #output {
+        border: 1px solid #ccc;
+        padding: 10px;
+        height: 300px;
+        overflow-y: scroll;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Тест потокового анализа эмоций</h1>
+    <label for="token">Access Token:</label><br />
+    <input
+      type="password"
+      id="token"
+      placeholder="Введите Bearer token"
+    /><br />
+    <label for="content">Сообщение:</label><br />
+    <textarea
+      id="content"
+      rows="3"
+      placeholder="Введите текст для анализа, напр. '!' (игнорируется эндпоинтом)"
+    ></textarea
+    ><br />
+    <button id="sendBtn" onclick="sendRequest()">Отправить запрос</button>
+    <button id="showPromptBtn" onclick="togglePrompt()" style="display:none; margin:10px 0;">Показать промпт</button>
+    <div id="output">Ответ появится здесь...</div>
+    <div id="promptDisplay" style="display:none; border:1px solid #ccc; padding:10px; margin:10px 0; background:#f9f9f9; white-space:pre-wrap; font-family:monospace; max-height:300px; overflow-y:scroll;">
+      Полный промпт для AI:
+    </div>
+
+    <script>
+      let abortController = null;
+      let currentPrompt = '';
+
+      function normalizeText(text) {
+        let normalized = text.replace(/\s+/g, " ").trim();
+        // Добавляем переносы после предложений для абзацев
+        normalized = normalized.replace(/([.!?])\s*(?=[А-ЯA-Z])/g, '$1\n\n');
+        return normalized;
+      }
+
+      async function sendRequest() {
+        const token = document.getElementById("token").value;
+        const content = document.getElementById("content").value;
+        const output = document.getElementById("output");
+        const sendBtn = document.getElementById("sendBtn");
+
+        if (!token || !content) {
+          output.innerHTML = "Введите token и сообщение!";
+          return;
+        }
+
+        // Abort previous request
+        if (abortController) {
+          abortController.abort();
+        }
+        abortController = new AbortController();
+
+        sendBtn.disabled = true;
+        output.innerHTML = "Отправка...";
+        let fullResponse = "";
+
+        try {
+          const response = await fetch(
+            "http://localhost:8000/api/chat/analyze-emotions",
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ type: "chunk", content: content }),
+              signal: abortController.signal,
+            }
+          );
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            if (abortController.signal.aborted) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            let lines = buffer.split("\n\n");
+            buffer = lines.pop() || ""; // Остаток в буфер
+
+            for (const line of lines) {
+              if (line.startsWith("data: ")) {
+                const dataStr = line.slice(6).trim();
+                if (dataStr === "[DONE]") continue;
+
+                try {
+                  const eventData = JSON.parse(dataStr);
+                  if (eventData.type === "chunk" && eventData.content) {
+                    fullResponse += eventData.content;
+                    const normalized = normalizeText(fullResponse);
+                    output.innerHTML = marked.parse(normalized); // Рендер MD в реальном времени
+                  } else if (eventData.type === "done") {
+                    fullResponse = eventData.content || fullResponse;
+                    currentPrompt = eventData.prompt || '';
+                    const normalized = normalizeText(fullResponse);
+                    output.innerHTML =
+                      marked.parse(normalized) || "Пустой ответ";
+                    document.getElementById('showPromptBtn').style.display = 'block';
+                  }
+                } catch (e) {
+                  console.error("JSON parse error:", e);
+                }
+              }
+            }
+          }
+
+          if (buffer && !abortController.signal.aborted) {
+            // Обработать остаток
+            if (buffer.startsWith("data: ")) {
+              const dataStr = buffer.slice(6).trim();
+              try {
+                const eventData = JSON.parse(dataStr);
+                if (eventData.type === "chunk" && eventData.content) {
+                  fullResponse += eventData.content;
+                  const normalized = normalizeText(fullResponse);
+                  output.innerHTML = marked.parse(normalized);
+                }
+              } catch (e) {}
+            }
+          }
+
+          const finalNormalized = normalizeText(fullResponse);
+          output.innerHTML = marked.parse(finalNormalized) || "Пустой ответ";
+          if (currentPrompt) {
+            document.getElementById('showPromptBtn').style.display = 'block';
+          }
+        } catch (error) {
+          if (error.name !== "AbortError") {
+            output.innerHTML = `Ошибка: ${error.message}`;
+          }
+        } finally {
+          sendBtn.disabled = false;
+          // Reset controller after completion
+          if (!abortController.signal.aborted) {
+            abortController = null;
+          }
+        }
+      }
+      function togglePrompt() {
+        const display = document.getElementById('promptDisplay');
+        const btn = document.getElementById('showPromptBtn');
+        if (display.style.display === 'none') {
+          display.innerHTML = 'Полный промпт для AI:\n\n' + currentPrompt;
+          display.style.display = 'block';
+          btn.textContent = 'Скрыть промпт';
+        } else {
+          display.style.display = 'none';
+          btn.textContent = 'Показать промпт';
+        }
+      }
+
+    </script>
+  </body>
+</html>

@@ -1,1 +1,1528 @@
-{"openapi":"3.1.0","info":{"title":"Эмоции Гид API","description":"API для веб-версии приложения по отслеживанию эмоционального состояния.\n\n## Общая информация\nAPI предоставляет функциональность для:\n- Аутентификации и управления пользователями\n- Отслеживания эмоционального состояния\n- Чат-бота с искусственным интеллектом\n- Аналитики и визуализации данных\n\n## Аутентификация\nВсе запросы к защищенным эндпоинтам требуют JWT токен в заголовке:\n```\nAuthorization: Bearer <token>\n```\n\n## Форматы данных\nВсе данные передаются в формате JSON.\n\n## Обработка ошибок\nВ случае ошибок API возвращает соответствующий HTTP статус код и объект с описанием ошибки.\n","contact":{"email":"dementjew.vania2016@yandex.ru"},"version":"1.0.0"},"servers":[{"url":"https://api.emotion-guide.com/v1","description":"Основной сервер API"}],"paths":{"/api/auth/login":{"post":{"tags":["Аутентификация"],"summary":"Post Api Auth Login","description":"Вход в систему","operationId":"post_api_auth_login_api_auth_login_post","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/LoginRequest"}}},"required":true},"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/AuthResponse"}}}},"400":{"description":"Bad Request","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}}},"401":{"description":"Unauthorized","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/api/auth/logout":{"post":{"tags":["Аутентификация"],"summary":"Post Api Auth Logout","description":"Выход из аккаунта (инвалидация токена не реализована, просто success)","operationId":"post_api_auth_logout_api_auth_logout_post","parameters":[{"name":"authorization","in":"header","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Authorization"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/SuccessResponse"}}}},"401":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}},"description":"Unauthorized"},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/api/auth/register":{"post":{"tags":["Аутентификация"],"summary":"Post Api Auth Register","description":"Регистрация нового пользователя","operationId":"post_api_auth_register_api_auth_register_post","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/RegisterRequest"}}},"required":true},"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/AuthResponse"}}}},"400":{"description":"Bad Request","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}}},"409":{"description":"Conflict","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/api/chat/analyze-emotions":{"post":{"tags":["Чат","Аналитика"],"summary":"Post Api Chat Analyze Emotions","description":"Анализ эмоций по результатам тестов САН","operationId":"post_api_chat_analyze_emotions_api_chat_analyze_emotions_post","parameters":[{"name":"authorization","in":"header","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Authorization"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/EmotionAnalysisResponse"}}}},"401":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}},"description":"Unauthorized"},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/api/chat/messages":{"post":{"tags":["Чат"],"summary":"Post Api Chat Messages","description":"Отправка сообщения в чат","operationId":"post_api_chat_messages_api_chat_messages_post","parameters":[{"name":"authorization","in":"header","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Authorization"}}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ChatMessageRequest"}}}},"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ChatMessage"}}}},"400":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}},"description":"Bad Request"},"401":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}},"description":"Unauthorized"},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}},"get":{"tags":["Чат"],"summary":"Get Api Chat Messages","description":"Получение истории сообщений","operationId":"get_api_chat_messages_api_chat_messages_get","parameters":[{"name":"limit","in":"query","required":false,"schema":{"anyOf":[{"type":"integer","maximum":100,"minimum":1},{"type":"null"}],"default":20,"title":"Limit"}},{"name":"authorization","in":"header","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Authorization"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"type":"array","items":{"$ref":"#/components/schemas/ChatMessage"},"title":"Response Get Api Chat Messages Api Chat Messages Get"}}}},"401":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}},"description":"Unauthorized"},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/api/test-results":{"post":{"tags":["Тесты"],"summary":"Post Api Test Results","description":"Сохранение результата теста САН","operationId":"post_api_test_results_api_test_results_post","parameters":[{"name":"authorization","in":"header","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Authorization"}}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/TestResultRequest"}}}},"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/SuccessResponse"}}}},"400":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}},"description":"Bad Request"},"401":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}},"description":"Unauthorized"},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}},"get":{"tags":["Тесты"],"summary":"Get Api Test Results","description":"Получение последних результатов тестов","operationId":"get_api_test_results_api_test_results_get","parameters":[{"name":"limit","in":"query","required":false,"schema":{"anyOf":[{"type":"integer","maximum":50,"minimum":1},{"type":"null"}],"default":5,"title":"Limit"}},{"name":"authorization","in":"header","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Authorization"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"type":"array","items":{"$ref":"#/components/schemas/TestResult"},"title":"Response Get Api Test Results Api Test Results Get"}}}},"401":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}},"description":"Unauthorized"},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}},"delete":{"tags":["Тесты"],"summary":"Delete Api Test Results","description":"Сброс всех результатов тестов","operationId":"delete_api_test_results_api_test_results_delete","parameters":[{"name":"authorization","in":"header","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Authorization"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/SuccessResponse"}}}},"401":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}},"description":"Unauthorized"},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/api/users/change-email":{"put":{"tags":["Пользователи"],"summary":"Put Api Users Change Email","description":"Смена email пользователя","operationId":"put_api_users_change_email_api_users_change_email_put","parameters":[{"name":"authorization","in":"header","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Authorization"}}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ChangeEmailRequest"}}}},"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/SuccessResponse"}}}},"400":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}},"description":"Bad Request"},"401":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}},"description":"Unauthorized"},"409":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}},"description":"Conflict"},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/api/users/change-password":{"put":{"tags":["Пользователи"],"summary":"Put Api Users Change Password","description":"Смена пароля пользователя","operationId":"put_api_users_change_password_api_users_change_password_put","parameters":[{"name":"authorization","in":"header","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Authorization"}}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ChangePasswordRequest"}}}},"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/SuccessResponse"}}}},"400":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}},"description":"Bad Request"},"401":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}},"description":"Unauthorized"},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/api/users/profile":{"get":{"tags":["Пользователи"],"summary":"Get Api Users Profile","description":"Получение профиля пользователя","operationId":"get_api_users_profile_api_users_profile_get","parameters":[{"name":"authorization","in":"header","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Authorization"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/UserProfile"}}}},"401":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}},"description":"Unauthorized"},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}},"put":{"tags":["Пользователи"],"summary":"Put Api Users Profile","description":"Обновление профиля пользователя","operationId":"put_api_users_profile_api_users_profile_put","parameters":[{"name":"authorization","in":"header","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Authorization"}}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/UpdateProfileRequest"}}}},"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/UserProfile"}}}},"400":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}},"description":"Bad Request"},"401":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}},"description":"Unauthorized"},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}}},"components":{"schemas":{"AuthResponse":{"properties":{"userId":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Userid","description":"Уникальный идентификатор пользователя","example":"user123"},"email":{"anyOf":[{"type":"string","format":"email"},{"type":"null"}],"title":"Email","description":"Электронная почта пользователя","example":"user@example.com"},"username":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Username","description":"Отображаемое имя пользователя","example":"Иван Иванов"},"token":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Token","description":"JWT токен для авторизации","example":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."}},"type":"object","title":"AuthResponse"},"ChangeEmailRequest":{"properties":{"newEmail":{"type":"string","format":"email","title":"Newemail","description":"Новый email пользователя","example":"newemail@example.com"},"password":{"type":"string","title":"Password","description":"Текущий пароль пользователя для подтверждения","example":"currentpassword123"}},"type":"object","required":["newEmail","password"],"title":"ChangeEmailRequest"},"ChangePasswordRequest":{"properties":{"currentPassword":{"type":"string","title":"Currentpassword","description":"Текущий пароль пользователя","example":"currentpassword123"},"newPassword":{"type":"string","title":"Newpassword","description":"Новый пароль пользователя (минимум 6 символов)","example":"newpassword123"}},"type":"object","required":["currentPassword","newPassword"],"title":"ChangePasswordRequest"},"ChatMessage":{"properties":{"messageId":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Messageid","description":"Уникальный идентификатор сообщения","example":"msg123"},"userId":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Userid","description":"Идентификатор пользователя","example":"user123"},"content":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Content","description":"Текст сообщения","example":"Как улучшить свое настроение?"},"isUser":{"anyOf":[{"type":"boolean"},{"type":"null"}],"title":"Isuser","description":"Флаг, указывающий, что сообщение от пользователя (true) или от AI (false)","example":true},"timestamp":{"anyOf":[{"type":"string","format":"date-time"},{"type":"null"}],"title":"Timestamp","description":"Временная метка сообщения","example":"2024-01-02T10:00:00Z"}},"type":"object","title":"ChatMessage"},"ChatMessageRequest":{"properties":{"content":{"type":"string","title":"Content","description":"Текст сообщения","example":"Как улучшить свое настроение?"},"isUser":{"type":"boolean","title":"Isuser","description":"Флаг, указывающий, что сообщение от пользователя (true) или от AI (false)","example":true}},"type":"object","required":["content","isUser"],"title":"ChatMessageRequest"},"EmotionAnalysisResponse":{"properties":{"analysis":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Analysis","description":"Текстовый анализ эмоционального состояния","example":"Ваши результаты показывают улучшение настроения за последние недели..."},"recommendations":{"anyOf":[{"items":{"type":"string"},"type":"array"},{"type":"null"}],"title":"Recommendations","description":"Рекомендации по улучшению эмоционального состояния","example":["Попробуйте увеличить физическую активность","Обратите внимание на качество сна"]},"createdAt":{"anyOf":[{"type":"string","format":"date-time"},{"type":"null"}],"title":"Createdat","description":"Временная метка анализа","example":"2024-01-02T10:00:00Z"}},"type":"object","title":"EmotionAnalysisResponse"},"Error":{"properties":{"error":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Error","description":"Описание ошибки"},"message":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Message","description":"Детализированное сообщение об ошибке"},"statusCode":{"anyOf":[{"type":"integer"},{"type":"null"}],"title":"Statuscode","description":"HTTP статус код ошибки"}},"type":"object","title":"Error"},"HTTPValidationError":{"properties":{"detail":{"items":{"$ref":"#/components/schemas/ValidationError"},"type":"array","title":"Detail"}},"type":"object","title":"HTTPValidationError"},"LoginRequest":{"properties":{"email":{"type":"string","format":"email","title":"Email","description":"Электронная почта пользователя","example":"user@example.com"},"password":{"type":"string","title":"Password","description":"Пароль пользователя","example":"password123"}},"type":"object","required":["email","password"],"title":"LoginRequest"},"RegisterRequest":{"properties":{"email":{"type":"string","format":"email","title":"Email","description":"Электронная почта пользователя","example":"user@example.com"},"password":{"type":"string","title":"Password","description":"Пароль пользователя (минимум 6 символов)","example":"password123"},"username":{"type":"string","title":"Username","description":"Отображаемое имя пользователя","example":"Иван Иванов"},"termsAccepted":{"type":"boolean","title":"Termsaccepted","description":"Флаг принятия пользовательского соглашения","example":true}},"type":"object","required":["email","password","username","termsAccepted"],"title":"RegisterRequest"},"SuccessResponse":{"properties":{"message":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Message","description":"Сообщение об успешной операции","example":"Операция выполнена успешно"}},"type":"object","title":"SuccessResponse"},"TestResult":{"properties":{"resultId":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Resultid","description":"Уникальный идентификатор результата теста","example":"result123"},"userId":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Userid","description":"Идентификатор пользователя","example":"user123"},"activityScore":{"anyOf":[{"type":"integer"},{"type":"null"}],"title":"Activityscore","description":"Оценка уровня активности","example":5},"moodScore":{"anyOf":[{"type":"integer"},{"type":"null"}],"title":"Moodscore","description":"Оценка настроения","example":6},"wellbeingScore":{"anyOf":[{"type":"integer"},{"type":"null"}],"title":"Wellbeingscore","description":"Оценка общего благополучия","example":4},"timestamp":{"anyOf":[{"type":"string","format":"date-time"},{"type":"null"}],"title":"Timestamp","description":"Временная метка теста","example":"2024-01-02T10:00:00Z"}},"type":"object","title":"TestResult"},"TestResultRequest":{"properties":{"activityScore":{"type":"integer","maximum":7.0,"minimum":1.0,"title":"Activityscore","description":"Оценка уровня активности (1-7)","example":5},"moodScore":{"type":"integer","maximum":7.0,"minimum":1.0,"title":"Moodscore","description":"Оценка настроения (1-7)","example":6},"wellbeingScore":{"type":"integer","maximum":7.0,"minimum":1.0,"title":"Wellbeingscore","description":"Оценка общего благополучия (1-7)","example":4},"timestamp":{"anyOf":[{"type":"string","format":"date-time"},{"type":"null"}],"title":"Timestamp","description":"Временная метка теста","example":"2024-01-02T10:00:00Z"}},"type":"object","required":["activityScore","moodScore","wellbeingScore"],"title":"TestResultRequest"},"UpdateProfileRequest":{"properties":{"username":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Username","description":"Новое отображаемое имя пользователя","example":"Новое Имя"}},"type":"object","title":"UpdateProfileRequest"},"UserProfile":{"properties":{"userId":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Userid","description":"Уникальный идентификатор пользователя","example":"user123"},"email":{"anyOf":[{"type":"string","format":"email"},{"type":"null"}],"title":"Email","description":"Электронная почта пользователя","example":"user@example.com"},"username":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Username","description":"Отображаемое имя пользователя","example":"Иван Иванов"},"createdAt":{"anyOf":[{"type":"string","format":"date-time"},{"type":"null"}],"title":"Createdat","description":"Дата и время создания учетной записи","example":"2024-01-01T00:00:00Z"},"updatedAt":{"anyOf":[{"type":"string","format":"date-time"},{"type":"null"}],"title":"Updatedat","description":"Дата и время последнего обновления профиля","example":"2024-01-02T00:00:00Z"}},"type":"object","title":"UserProfile"},"ValidationError":{"properties":{"loc":{"items":{"anyOf":[{"type":"string"},{"type":"integer"}]},"type":"array","title":"Location"},"msg":{"type":"string","title":"Message"},"type":{"type":"string","title":"Error Type"}},"type":"object","required":["loc","msg","type"],"title":"ValidationError"}}}}
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Эмоции Гид API",
+    "description": "API для веб-версии приложения по отслеживанию эмоционального состояния.\n\n## Общая информация\nAPI предоставляет функциональность для:\n- Аутентификации и управления пользователями\n- Отслеживания эмоционального состояния\n- Чат-бота с искусственным интеллектом\n- Аналитики и визуализации данных\n\n## Аутентификация\nВсе запросы к защищенным эндпоинтам требуют JWT токен в заголовке:\n```\nAuthorization: Bearer <token>\n```\n\n## Форматы данных\nВсе данные передаются в формате JSON.\n\n## Обработка ошибок\nВ случае ошибок API возвращает соответствующий HTTP статус код и объект с описанием ошибки.\n",
+    "version": "1.0.0",
+    "contact": {
+      "email": "dementjew.vania2016@yandex.ru"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api.emotion-guide.com/v1",
+      "description": "Основной сервер API"
+    }
+  ],
+  "paths": {
+    "/api/auth/register": {
+      "post": {
+        "tags": ["Аутентификация"],
+        "summary": "Регистрация нового пользователя",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Успешная регистрация",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Пользователь уже существует",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "operationId": "post_api_auth_register"
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": ["Аутентификация"],
+        "summary": "Вход в систему",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Успешный вход",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Неверные учетные данные",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Ошибка аутентификации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "operationId": "post_api_auth_login"
+      }
+    },
+    "/api/auth/refresh": {
+      "post": {
+        "tags": ["Аутентификация"],
+        "summary": "Обновление access токена по refresh токену",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Токены обновлены",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Неверный refresh токен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Ошибка аутентификации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "operationId": "post_api_auth_refresh"
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": ["Аутентификация"],
+        "summary": "Выход из аккаунта с инвалидацией refresh токена",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogoutRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Успешный выход",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Ошибка logout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Ошибка аутентификации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "operationId": "post_api_auth_logout"
+      }
+    },
+    "/api/users/profile": {
+      "get": {
+        "tags": ["Пользователи"],
+        "summary": "Получение профиля пользователя",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Профиль пользователя",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserProfile"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Не авторизован",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "operationId": "get_api_users_profile",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "put": {
+        "tags": ["Пользователи"],
+        "summary": "Обновление профиля пользователя",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProfileRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Профиль обновлен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserProfile"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Не авторизован",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "operationId": "put_api_users_profile",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/users/change-email": {
+      "put": {
+        "tags": ["Пользователи"],
+        "summary": "Смена email пользователя",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeEmailRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Email изменен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Не авторизован",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Email уже используется",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "operationId": "put_api_users_change_email",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/users/change-password": {
+      "put": {
+        "tags": ["Пользователи"],
+        "summary": "Смена пароля пользователя",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Пароль изменен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Не авторизован",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "operationId": "put_api_users_change_password",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/san/questions": {
+      "get": {
+        "tags": ["Тесты"],
+        "summary": "Получение списка вопросов для теста САН",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Список вопросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Не авторизован",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "operationId": "get_api_san_questions",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/san/process": {
+      "post": {
+        "tags": ["Тесты"],
+        "summary": "Обработка ответов САН и возврат баллов с интерпретацией (сохраняет в DB)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SanProcessRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Результаты обработки",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SanProcessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Неверные данные",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Не авторизован",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "operationId": "post_api_san_process",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/test-results": {
+      "get": {
+        "tags": ["Тесты"],
+        "summary": "Получение последних результатов тестов",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            },
+            "description": "Количество результатов (по умолчанию 5)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Список результатов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TestResult"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Не авторизован",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "operationId": "get_api_test_results",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": ["Тесты"],
+        "summary": "Сохранение готового результата теста САН (альтернатива process)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestResultRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Результат сохранен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Неверные данные",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Не авторизован",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "operationId": "post_api_test_results",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": ["Тесты"],
+        "summary": "Сброс всех результатов тестов",
+        "responses": {
+          "200": {
+            "description": "Результаты удалены",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Не авторизован",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "operationId": "delete_api_test_results",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/chat/messages": {
+      "get": {
+        "tags": ["Чат"],
+        "summary": "Получение истории сообщений",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "description": "Количество сообщений (по умолчанию 20)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "История сообщений",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ChatMessage"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Не авторизован",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "operationId": "get_api_chat_messages",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": ["Чат"],
+        "summary": "Отправка сообщения в чат с AI ответом (SSE стриминг)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatMessageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "SSE стриминг чата",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Не авторизован",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Cooldown",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "operationId": "post_api_chat_messages",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/chat/analyze-emotions": {
+      "post": {
+        "tags": ["Чат", "Аналитика"],
+        "summary": "Анализ эмоций по результатам тестов САН (SSE стриминг)",
+        "responses": {
+          "200": {
+            "description": "SSE стриминг анализа",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Не авторизован",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Cooldown",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "operationId": "post_api_chat_analyze_emotions",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/chat/history": {
+      "delete": {
+        "tags": ["Чат"],
+        "summary": "Очистка истории чата",
+        "responses": {
+          "200": {
+            "description": "История очищена",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Не авторизован",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "operationId": "delete_api_chat_history",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/chat/metadata": {
+      "get": {
+        "tags": ["Чат"],
+        "summary": "Метаданные чата для cooldown",
+        "responses": {
+          "200": {
+            "description": "Метаданные",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatMetadataResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Не авторизован",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "operationId": "get_api_chat_metadata",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "RegisterRequest": {
+        "required": ["email", "password", "username", "termsAccepted"],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Электронная почта пользователя",
+            "example": "user@example.com"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 6,
+            "description": "Пароль пользователя (минимум 6 символов)",
+            "example": "password123"
+          },
+          "username": {
+            "type": "string",
+            "description": "Отображаемое имя пользователя",
+            "example": "Иван Иванов"
+          },
+          "termsAccepted": {
+            "type": "boolean",
+            "description": "Флаг принятия пользовательского соглашения",
+            "example": true
+          }
+        }
+      },
+      "LoginRequest": {
+        "required": ["email", "password"],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Электронная почта пользователя",
+            "example": "user@example.com"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 6,
+            "description": "Пароль пользователя",
+            "example": "password123"
+          }
+        }
+      },
+      "RefreshRequest": {
+        "required": ["refreshToken"],
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string",
+            "description": "Refresh токен для обновления access токена",
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          }
+        }
+      },
+      "LogoutRequest": {
+        "required": ["refreshToken"],
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string",
+            "description": "Refresh токен для инвалидации при logout",
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          }
+        }
+      },
+      "UpdateProfileRequest": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "description": "Новое отображаемое имя пользователя",
+            "example": "Новое Имя"
+          }
+        }
+      },
+      "ChangeEmailRequest": {
+        "required": ["newEmail", "password"],
+        "type": "object",
+        "properties": {
+          "newEmail": {
+            "type": "string",
+            "format": "email",
+            "description": "Новый email пользователя",
+            "example": "newemail@example.com"
+          },
+          "password": {
+            "type": "string",
+            "description": "Текущий пароль пользователя для подтверждения",
+            "example": "currentpassword123"
+          }
+        }
+      },
+      "ChangePasswordRequest": {
+        "required": ["currentPassword", "newPassword"],
+        "type": "object",
+        "properties": {
+          "currentPassword": {
+            "type": "string",
+            "description": "Текущий пароль пользователя",
+            "example": "currentpassword123"
+          },
+          "newPassword": {
+            "type": "string",
+            "minLength": 6,
+            "description": "Новый пароль пользователя (минимум 6 символов)",
+            "example": "newpassword123"
+          }
+        }
+      },
+      "TestResultRequest": {
+        "required": ["activityScore", "moodScore", "wellbeingScore"],
+        "type": "object",
+        "properties": {
+          "activityScore": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 7,
+            "description": "Оценка уровня активности (1-7)",
+            "example": 5
+          },
+          "moodScore": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 7,
+            "description": "Оценка настроения (1-7)",
+            "example": 6
+          },
+          "wellbeingScore": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 7,
+            "description": "Оценка общего благополучия (1-7)",
+            "example": 4
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Временная метка теста",
+            "example": "2024-01-02T10:00:00Z"
+          }
+        }
+      },
+      "SanProcessRequest": {
+        "required": ["answers"],
+        "type": "object",
+        "properties": {
+          "answers": {
+            "type": "array",
+            "minItems": 30,
+            "maxItems": 30,
+            "description": "Ответы на 30 вопросов (1-7)",
+            "items": {
+              "type": "integer"
+            },
+            "example": [
+              4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+              4, 4, 4, 4, 4, 4, 4, 4
+            ]
+          }
+        }
+      },
+      "SanProcessResponse": {
+        "required": [
+          "wellbeing",
+          "activity",
+          "mood",
+          "timestamp",
+          "interpretation"
+        ],
+        "type": "object",
+        "properties": {
+          "wellbeing": {
+            "type": "number",
+            "description": "Балл самочувствия (1-7, 1 знак)",
+            "example": 5.0
+          },
+          "activity": {
+            "type": "number",
+            "description": "Балл активности (1-7, 1 знак)",
+            "example": 6.0
+          },
+          "mood": {
+            "type": "number",
+            "description": "Балл настроения (1-7, 1 знак)",
+            "example": 4.0
+          },
+          "timestamp": {
+            "type": "integer",
+            "description": "Временная метка (ms)",
+            "example": 1726723200000
+          },
+          "interpretation": {
+            "type": "string",
+            "description": "Полная интерпретация результатов как текст",
+            "example": "Отличное состояние! ⭐\nВы чувствуете себя бодро, активно и в хорошем настроении.\n\nДетали:\n- Ваши показатели сбалансированы, что говорит о гармоничном состоянии."
+          }
+        }
+      },
+      "ChatMessageRequest": {
+        "required": ["content", "isUser"],
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string",
+            "description": "Текст сообщения",
+            "example": "Как улучшить свое настроение?"
+          },
+          "isUser": {
+            "type": "boolean",
+            "description": "Флаг, указывающий, что сообщение от пользователя (true) или от AI (false)",
+            "example": true
+          }
+        }
+      },
+      "AuthResponse": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "description": "Уникальный идентификатор пользователя",
+            "example": "user123"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Электронная почта пользователя",
+            "example": "user@example.com"
+          },
+          "username": {
+            "type": "string",
+            "description": "Отображаемое имя пользователя",
+            "example": "Иван Иванов"
+          },
+          "accessToken": {
+            "type": "string",
+            "description": "Access JWT токен для авторизации",
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          },
+          "refreshToken": {
+            "type": "string",
+            "description": "Refresh токен для обновления access токена",
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          }
+        }
+      },
+      "UserProfile": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "description": "Уникальный идентификатор пользователя",
+            "example": "user123"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Электронная почта пользователя",
+            "example": "user@example.com"
+          },
+          "username": {
+            "type": "string",
+            "description": "Отображаемое имя пользователя",
+            "example": "Иван Иванов"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Дата и время создания учетной записи",
+            "example": "2024-01-01T00:00:00Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Дата и время последнего обновления профиля",
+            "example": "2024-01-02T00:00:00Z"
+          }
+        }
+      },
+      "TestResult": {
+        "type": "object",
+        "properties": {
+          "resultId": {
+            "type": "string",
+            "description": "Уникальный идентификатор результата теста",
+            "example": "result123"
+          },
+          "userId": {
+            "type": "string",
+            "description": "Идентификатор пользователя",
+            "example": "user123"
+          },
+          "activityScore": {
+            "type": "integer",
+            "description": "Оценка уровня активности",
+            "example": 5
+          },
+          "moodScore": {
+            "type": "integer",
+            "description": "Оценка настроения",
+            "example": 6
+          },
+          "wellbeingScore": {
+            "type": "integer",
+            "description": "Оценка общего благополучия",
+            "example": 4
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Временная метка теста",
+            "example": "2024-01-02T10:00:00Z"
+          }
+        }
+      },
+      "ChatMessage": {
+        "type": "object",
+        "properties": {
+          "messageId": {
+            "type": "string",
+            "description": "Уникальный идентификатор сообщения",
+            "example": "msg123"
+          },
+          "userId": {
+            "type": "string",
+            "description": "Идентификатор пользователя",
+            "example": "user123"
+          },
+          "content": {
+            "type": "string",
+            "description": "Текст сообщения",
+            "example": "Как улучшить свое настроение?"
+          },
+          "isUser": {
+            "type": "boolean",
+            "description": "Флаг, указывающий, что сообщение от пользователя (true) или от AI (false)",
+            "example": true
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Временная метка сообщения",
+            "example": "2024-01-02T10:00:00Z"
+          }
+        }
+      },
+      "EmotionAnalysisResponse": {
+        "type": "object",
+        "properties": {
+          "analysis": {
+            "type": "string",
+            "description": "Текстовый анализ эмоционального состояния",
+            "example": "Ваши результаты показывают улучшение настроения за последние недели..."
+          },
+          "recommendations": {
+            "type": "array",
+            "description": "Рекомендации по улучшению эмоционального состояния",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "Попробуйте увеличить физическую активность",
+              "Обратите внимание на качество сна"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Временная метка анализа",
+            "example": "2024-01-02T10:00:00Z"
+          }
+        }
+      },
+      "SuccessResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Сообщение об успешной операции",
+            "example": "Операция выполнена успешно"
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Описание ошибки"
+          },
+          "message": {
+            "type": "string",
+            "description": "Детализированное сообщение об ошибке"
+          },
+          "statusCode": {
+            "type": "integer",
+            "description": "HTTP статус код ошибки"
+          }
+        }
+      },
+      "ChatMetadataResponse": {
+        "type": "object",
+        "properties": {
+          "last_chat_time": {
+            "type": "integer",
+            "description": "Время последнего чата (ms)",
+            "example": 1726723200000
+          },
+          "chat_cooldown_remaining": {
+            "type": "integer",
+            "description": "Оставшееся время cooldown чата (ms)",
+            "example": 0
+          },
+          "last_analysis_time": {
+            "type": "integer",
+            "description": "Время последнего анализа (ms)",
+            "example": 1726723200000
+          },
+          "analysis_cooldown_remaining": {
+            "type": "integer",
+            "description": "Оставшееся время cooldown анализа (ms)",
+            "example": 0
+          }
+        }
+      },
+      "HTTPValidationError": {
+        "type": "object",
+        "properties": {
+          "detail": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail"
+          }
+        },
+        "title": "HTTPValidationError"
+      },
+      "ValidationError": {
+        "required": ["loc", "msg", "type"],
+        "type": "object",
+        "properties": {
+          "loc": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "title": "ValidationError"
+      }
+    }
+  }
+}

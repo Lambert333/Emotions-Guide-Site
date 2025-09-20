@@ -37,7 +37,14 @@ from backend.models import (
     SanProcessResponse,
 )
 
+from backend.services.ai_service import AIService
+from backend.utils.time_utils import TimeAndSeasonData
+import json
+from fastapi.responses import StreamingResponse
 from datetime import datetime
+
+from datetime import datetime
+from fastapi.middleware.cors import CORSMiddleware
 
 
 app = FastAPI(
@@ -47,10 +54,18 @@ app = FastAPI(
     contact={'email': 'dementjew.vania2016@yandex.ru'},
     servers=[
         {
-            'url': 'https://api.emotion-guide.com/v1',
+            'url': 'https://api.emotion-guide.ru/v1',
             'description': 'Основной сервер API',
         }
     ],
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 limiter = Limiter(key_func=get_remote_address)
@@ -59,6 +74,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
 san_service = SANTestService()
+ai_service = AIService()
 
 async def get_current_user_id(authorization: Optional[str] = Header(None)) -> str:
     """Dependency для получения user_id из Firebase токена."""
@@ -172,51 +188,151 @@ def post_api_auth_register(body: RegisterRequest) -> Union[AuthResponse, Error]:
 
 @app.post(
     '/api/chat/analyze-emotions',
-    response_model=EmotionAnalysisResponse,
-    responses={'401': {'model': Error}},
     tags=['Чат', 'Аналитика'],
 )
-def post_api_chat_analyze_emotions(user_id: str = Depends(get_current_user_id)) -> Union[EmotionAnalysisResponse, Error]:
+async def post_api_chat_analyze_emotions(user_id: str = Depends(get_current_user_id)):
     """
-    Анализ эмоций по результатам тестов САН
+    Анализ результатов теста САН с ИИ (стриминг SSE).
     """
-    # Заглушка: fetch последних результатов и анализ
-    results = RealtimeDB.get(f'Users/{user_id}/TestResults')
-    if not results:
-        raise HTTPException(status_code=404, detail="No test results found")
-    # Простой анализ (расширить позже)
-    recent = list(results.values())[-1] if isinstance(results, dict) else results
-    return EmotionAnalysisResponse(
-        analysis=f"Анализ на основе последних тестов: wellbeingScore {recent.get('wellbeingScore', 0):.1f}, activityScore {recent.get('activityScore', 0):.1f}, moodScore {recent.get('moodScore', 0):.1f}.",
-        recommendations=["Продолжайте мониторинг", "Увеличьте активность"],
-        createdAt=datetime.now()
-    )
+    from backend.services.SAN_test_service import SANTestService
+    san_service = SANTestService()
+
+    # Cooldown check
+    metadata = RealtimeDB.get(f'Users/{user_id}/metadata') or {}
+    last_analysis = metadata.get('last_analysis_time', 0)
+    now = int(datetime.now().timestamp() * 1000)
+    if now - last_analysis < 30000:
+        raise HTTPException(status_code=429, detail="Cooldown: подождите 30 секунд")
+
+    # Placeholder
+    placeholder = {
+        'content': '⌛ Пожалуйста, подождите...',
+        'isUser': False,
+        'timestamp': datetime.now().isoformat()
+    }
+    placeholder_key = RealtimeDB.create(f'Users/{user_id}/ChatMessages', placeholder)
+
+    try:
+        time_data_obj = TimeAndSeasonData()
+        time_data = time_data_obj.get_time_data()
+        results = RealtimeDB.get(f'Users/{user_id}/TestResults') or {}
+        sorted_results = sorted(results.values(), key=lambda x: x.get('timestamp', 0), reverse=True)[:25]
+        username = RealtimeDB.get(f'Users/{user_id}').get('username', 'Пользователь')
+
+        json_data = san_service.prepare_san_data_for_ai(sorted_results, username, time_data)
+        print("JSON data preview:", json_data[:500])  # Debug: preview data sent to AI
+        print("Number of tests:", len(sorted_results))
+
+        if not sorted_results:
+            prompt = ai_service.results_empty_prompt.format(
+                username=username,
+                season=time_data['season'],
+                time_of_day=time_data['timeOfDay'],
+                suggestion="прогулку на свежем воздухе" if time_data['timeOfDay'] == "утро" else "чай перед сном"
+            )
+        else:
+            prompt = ai_service.results_not_empty_prompt.format(
+                username=username,
+                time_of_day=time_data['timeOfDay'],
+                season=time_data['season'],
+                json_data=json_data
+            )
+            print("Prompt length:", len(prompt))  # Debug: prompt size
+            print("Prompt preview:", prompt[:500])  # Debug: start of prompt
+
+        async def generate_analysis():
+            # Получить полный ответ без стриминга
+            full_ai_generator = ai_service.send_request(prompt, "", stream=False)
+            full_ai = ""
+            async for content in full_ai_generator:
+                full_ai += content
+            # Update metadata
+            RealtimeDB.update(f'Users/{user_id}/metadata', {'last_analysis_time': now})
+            # Update placeholder with full
+            filtered_full = ai_service._filter_response(full_ai)  # Assume access
+            RealtimeDB.update(f'Users/{user_id}/ChatMessages/{placeholder_key}', {'content': filtered_full})
+            # Limit 50
+            all_msgs = RealtimeDB.get(f'Users/{user_id}/ChatMessages') or {}
+            if len(all_msgs) > 50:
+                sorted_keys = sorted(all_msgs.keys(), key=lambda k: all_msgs[k].get('timestamp', ''))[:len(all_msgs)-50]
+                for old_key in sorted_keys:
+                    RealtimeDB.delete(f'Users/{user_id}/ChatMessages/{old_key}')
+            # Yield полный ответ сразу
+            yield f"data: {json.dumps({'type': 'done', 'content': filtered_full, 'prompt': prompt})}\n\n"
+
+        return StreamingResponse(generate_analysis(), media_type="text/event-stream")
+
+    except Exception as e:
+        RealtimeDB.delete(f'Users/{user_id}/ChatMessages/{placeholder_key}')
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post(
     '/api/chat/messages',
-    response_model=ChatMessage,
-    responses={'400': {'model': Error}, '401': {'model': Error}},
     tags=['Чат'],
 )
-def post_api_chat_messages(body: ChatMessageRequest, user_id: str = Depends(get_current_user_id)) -> Union[ChatMessage, Error]:
+async def post_api_chat_messages(body: ChatMessageRequest, user_id: str = Depends(get_current_user_id)):
     """
-    Отправка сообщения в чат
+    Отправка сообщения пользователя в чат и получение AI ответа (стриминг SSE).
     """
-    # Заглушка: сохранить в DB /Users/{user_id}/ChatMessages/{push}
-    message_data = {
+    if not body.isUser:
+        raise HTTPException(status_code=400, detail="Only user messages allowed")
+
+    # Cooldown
+    metadata = RealtimeDB.get(f'Users/{user_id}/metadata') or {}
+    last_chat = metadata.get('last_chat_time', 0)
+    now = int(datetime.now().timestamp() * 1000)
+    if now - last_chat < 30000:
+        raise HTTPException(status_code=429, detail="Cooldown: подождите 30 секунд")
+
+    # Save user
+    user_data = {
         'content': body.content,
-        'isUser': body.isUser,
+        'isUser': True,
         'timestamp': datetime.now().isoformat()
     }
-    key = RealtimeDB.create(f'Users/{user_id}/ChatMessages', message_data)
-    return ChatMessage(
-        messageId=key,
-        userId=user_id,
-        content=body.content,
-        isUser=body.isUser,
-        timestamp=datetime.now()
-    )
+    user_key = RealtimeDB.create(f'Users/{user_id}/ChatMessages', user_data)
+
+    # Placeholder AI
+    placeholder_data = {
+        'content': '⌛ Пожалуйста, подождите...',
+        'isUser': False,
+        'timestamp': datetime.now().isoformat()
+    }
+    placeholder_key = RealtimeDB.create(f'Users/{user_id}/ChatMessages', placeholder_data)
+
+    try:
+        # History last 10
+        all_msgs = RealtimeDB.get(f'Users/{user_id}/ChatMessages') or {}
+        sorted_msgs = sorted(all_msgs.values(), key=lambda x: x.get('timestamp', ''), reverse=True)[:10]
+        history = [{"role": "user" if m.get('isUser') else "assistant", "content": m.get('content', '')} for m in reversed(sorted_msgs)]
+
+        # Prompt
+        history_str = "\n".join([f"{h['role'].capitalize()}: {h['content']}" for h in history])
+        prompt = f"{ai_service.system_prompt_chat}\n\nПредыдущий разговор:\n{history_str}"
+
+        async def generate_chat():
+            full_ai = ""
+            async for chunk in ai_service.send_request(prompt, body.content, history, stream=True):
+                full_ai += chunk
+                yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
+            # Update
+            RealtimeDB.update(f'Users/{user_id}/metadata', {'last_chat_time': now})
+            filtered_full = ai_service._filter_response(full_ai)
+            RealtimeDB.update(f'Users/{user_id}/ChatMessages/{placeholder_key}', {'content': filtered_full})
+            # Limit 50
+            all_msgs = RealtimeDB.get(f'Users/{user_id}/ChatMessages') or {}
+            if len(all_msgs) > 50:
+                sorted_keys = sorted(all_msgs.keys(), key=lambda k: all_msgs[k].get('timestamp', ''))[:len(all_msgs)-50]
+                for old_key in sorted_keys:
+                    RealtimeDB.delete(f'Users/{user_id}/ChatMessages/{old_key}')
+            yield f"data: {json.dumps({'type': 'done', 'content': filtered_full})}\n\n"
+
+        return StreamingResponse(generate_chat(), media_type="text/event-stream")
+
+    except Exception as e:
+        RealtimeDB.delete(f'Users/{user_id}/ChatMessages/{placeholder_key}')
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get(
@@ -430,3 +546,43 @@ def put_api_users_profile(body: UpdateProfileRequest, user_id: str = Depends(get
         createdAt=datetime.fromisoformat(profile.get('createdAt')) if profile.get('createdAt') else None,
         updatedAt=datetime.fromisoformat(profile.get('updatedAt')) if profile.get('updatedAt') else None
     )
+
+
+@app.delete(
+    '/api/chat/history',
+    response_model=SuccessResponse,
+    responses={'401': {'model': Error}},
+    tags=['Чат'],
+)
+def delete_api_chat_history(user_id: str = Depends(get_current_user_id)) -> Union[SuccessResponse, Error]:
+    """
+    Очистка истории чата.
+    """
+    RealtimeDB.delete(f'Users/{user_id}/ChatMessages')
+    welcome = {
+        'content': 'Здравствуйте! Я ваш ИИ-психолог. Расскажите, как дела?',
+        'isUser': False,
+        'timestamp': datetime.now().isoformat()
+    }
+    RealtimeDB.create(f'Users/{user_id}/ChatMessages', welcome)
+    return SuccessResponse(message="История очищена")
+
+
+@app.get(
+    '/api/chat/metadata',
+    response_model=dict,
+    responses={'401': {'model': Error}},
+    tags=['Чат'],
+)
+def get_api_chat_metadata(user_id: str = Depends(get_current_user_id)) -> dict:
+    """
+    Метаданные чата для cooldown.
+    """
+    metadata = RealtimeDB.get(f'Users/{user_id}/metadata') or {}
+    now = int(datetime.now().timestamp() * 1000)
+    return {
+        "last_chat_time": metadata.get('last_chat_time', 0),
+        "chat_cooldown_remaining": max(0, 30000 - (now - metadata.get('last_chat_time', 0))),
+        "last_analysis_time": metadata.get('last_analysis_time', 0),
+        "analysis_cooldown_remaining": max(0, 30000 - (now - metadata.get('last_analysis_time', 0)))
+    }

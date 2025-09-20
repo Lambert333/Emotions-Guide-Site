@@ -420,18 +420,7 @@
       "get": {
         "tags": ["Тесты"],
         "summary": "Получение списка вопросов для теста САН",
-        "parameters": [
-          {
-            "name": "limit",
-            "in": "query",
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 50
-            },
-            "description": "Количество результатов (по умолчанию 5)"
-          }
-        ],
+        "parameters": [],
         "responses": {
           "200": {
             "description": "Список вопросов",
@@ -702,7 +691,7 @@
       },
       "post": {
         "tags": ["Чат"],
-        "summary": "Отправка сообщения в чат",
+        "summary": "Отправка сообщения в чат с AI ответом (SSE стриминг)",
         "requestBody": {
           "required": true,
           "content": {
@@ -715,11 +704,11 @@
         },
         "responses": {
           "200": {
-            "description": "Сообщение отправлено",
+            "description": "SSE стриминг чата",
             "content": {
-              "application/json": {
+              "text/event-stream": {
                 "schema": {
-                  "$ref": "#/components/schemas/ChatMessage"
+                  "type": "string"
                 }
               }
             }
@@ -743,6 +732,16 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Cooldown",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "operationId": "postApiChatMessages",
@@ -756,14 +755,58 @@
     "/api/chat/analyze-emotions": {
       "post": {
         "tags": ["Чат", "Аналитика"],
-        "summary": "Анализ эмоций по результатам тестов САН",
+        "summary": "Анализ эмоций по результатам тестов САН (SSE стриминг)",
         "responses": {
           "200": {
-            "description": "Анализ эмоций",
+            "description": "SSE стриминг анализа",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Не авторизован",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/EmotionAnalysisResponse"
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Cooldown",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "operationId": "postApiChatAnalyzeEmotions",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/chat/history": {
+      "delete": {
+        "tags": ["Чат"],
+        "summary": "Очистка истории чата",
+        "responses": {
+          "200": {
+            "description": "История очищена",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
                 }
               }
             }
@@ -779,7 +822,41 @@
             }
           }
         },
-        "operationId": "postApiChatAnalyzeEmotions",
+        "operationId": "deleteApiChatHistory",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/chat/metadata": {
+      "get": {
+        "tags": ["Чат"],
+        "summary": "Метаданные чата для cooldown",
+        "responses": {
+          "200": {
+            "description": "Метаданные",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatMetadataResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Не авторизован",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "operationId": "getApiChatMetadata",
         "security": [
           {
             "bearerAuth": []
@@ -932,10 +1009,7 @@
             "items": {
               "type": "integer"
             },
-            "example": [
-              4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
-              4, 4, 4, 4, 4, 4, 4, 4
-            ]
+            "example": [4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4]
           }
         }
       },
@@ -1196,6 +1270,31 @@
             "type": "string",
             "description": "Refresh токен для инвалидации при logout",
             "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          }
+        }
+      },
+      "ChatMetadataResponse": {
+        "type": "object",
+        "properties": {
+          "last_chat_time": {
+            "type": "integer",
+            "description": "Время последнего чата (ms)",
+            "example": 1726723200000
+          },
+          "chat_cooldown_remaining": {
+            "type": "integer",
+            "description": "Оставшееся время cooldown чата (ms)",
+            "example": 0
+          },
+          "last_analysis_time": {
+            "type": "integer",
+            "description": "Время последнего анализа (ms)",
+            "example": 1726723200000
+          },
+          "analysis_cooldown_remaining": {
+            "type": "integer",
+            "description": "Оставшееся время cooldown анализа (ms)",
+            "example": 0
           }
         }
       }

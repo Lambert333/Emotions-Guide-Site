@@ -1,50 +1,12 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
+
 
 # C extensions
 *.egg-info/
 dist/
 build/
 
-# Virtual environments
-.venv/
-venv/
-ENV/
-
-# IDE files
-.idea/
-.vscode/
-
-# OS generated files
-.DS_Store
-.DS_Store?
 
 # Environment variables
 .env
 .env.local
 .env.*.local
-
-# Credentials
-creds.json
-
-# Logs
-*.log
-logs/
-
-# Database
-*.db
-*.sqlite
-*.sqlite3
-
-# PDF files in backend
-backend/*.pdf
-
-# Dependencies
-.pytest_cache/
-.coverage
-htmlcov/
-.tox/backend/creds.json
-/backend/creds.json

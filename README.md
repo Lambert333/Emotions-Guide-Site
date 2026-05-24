@@ -1,188 +1,72 @@
-# Emotions Guide Site
+# Emotions Guide Web
 
-## Описание
+Full-stack web application for tracking emotional state, tests, charts, Firebase authentication, and AI-assisted recommendations.
 
-Веб-приложение для отслеживания эмоционального состояния с использованием теста САН (Самочувствие, Активность, Настроение). Пользователи могут регистрироваться, проходить тест, получать персонализированные рекомендации и анализировать прогресс.
+## Stack
 
-## Структура проекта
+- Frontend: React 18, TypeScript, Vite, Firebase client SDK.
+- Backend: FastAPI, Firebase Admin SDK, Realtime Database, PyJWT, SlowAPI, HTTPX.
 
-- **backend/**: FastAPI сервер с Firebase аутентификацией и Realtime Database.
-  - **services/**: Логика теста САН в `SAN_test_service.py` и авторизации в `auth_service.py`.
-  - **models.py**: Pydantic модели для API.
-  - **main.py**: FastAPI routes.
-- **.venv**: Виртуальное окружение Python.
-- **requirements.txt**: Зависимости (fastapi, uvicorn, firebase-admin, pydantic).
+## Repository Safety
 
-## Запуск backend
+Real secrets must not be committed. Keep local values in ignored files:
 
-1. Активируйте виртуальное окружение:
-   ```
-   source .venv/bin/activate  # Linux/Mac
-   .venv\Scripts\activate     # Windows
-   ```
-2. Установите зависимости:
-   ```
-   pip install -r requirements.txt
-   ```
-3. Настройте Firebase: добавьте `creds.json` в backend/ (сервисный аккаунт).
-4. Запустите сервер:
-   ```
-   uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
-   ```
-5. API docs: http://localhost:8000/docs
+- `backend/.env`
+- `Frontend/.env`
+- `Frontend/.env.local`
+- `backend/serviceAccountKey.json`
+- `backend/certs.json`
 
-## API Спецификация
+Use the tracked templates instead:
 
-### Сервис Авторизации
+- `backend/.env.example`
+- `Frontend/.env.example`
 
-Аутентификация использует Firebase Auth с JWT токенами. Все защищенные эндпоинты требуют заголовок `Authorization: Bearer <access_token>`.
+For local backend development, keep the Firebase service account JSON outside the repository and point to it with `FIREBASE_SERVICE_ACCOUNT_PATH`. If a service account key was ever exposed publicly, rotate it in Google Cloud/Firebase and delete the old key.
 
-#### 1. Регистрация (/api/auth/register, POST)
+For CI/CD, store runtime secrets in GitHub Actions Secrets only when a workflow needs them. For Google/Firebase deployments, prefer GitHub OIDC with Google Workload Identity Federation over long-lived service account JSON secrets. In production, use the hosting provider's environment variables or a secret manager.
 
-- **Описание**: Создать нового пользователя.
-- **Тело запроса** (JSON):
-  ```
-  {
-    "email": "user@example.com",
-    "password": "password123",
-    "username": "Иван Иванов",
-    "termsAccepted": true
-  }
-  ```
-- **Ответ (200)**:
-  ```
-  {
-    "userId": "user123",
-    "email": "user@example.com",
-    "username": "Иван Иванов",
-    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-  }
-  ```
-- **Ошибки**: 400 (валидация), 409 (пользователь существует).
+`VITE_*` values and Firebase web config are bundled into frontend code, so they are not a place for private secrets. Protect Firebase access with Auth, database rules, API key restrictions, and allowed domains.
 
-#### 2. Вход (/api/auth/login, POST)
+## Frontend Setup
 
-- **Описание**: Аутентифицировать пользователя.
-- **Тело запроса**:
-  ```
-  {
-    "email": "user@example.com",
-    "password": "password123"
-  }
-  ```
-- **Ответ (200)**: Аналогично регистрации (токены).
-- **Ошибки**: 400 (неверные данные), 401 (ошибка auth).
+```bash
+cd Frontend
+cp .env.example .env.local
+npm ci
+npm run dev
+```
 
-#### 3. Обновление токена (/api/auth/refresh, POST)
+For a production build:
 
-- **Описание**: Получить новый access_token по refresh_token.
-- **Тело запроса**:
-  ```
-  {
-    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-  }
-  ```
-- **Ответ (200)**: Новые токены.
-- **Ошибки**: 400 (неверный токен), 401 (ошибка).
+```bash
+cd Frontend
+npm run build
+```
 
-#### 4. Выход (/api/auth/logout, POST)
+## Backend Setup
 
-- **Описание**: Инвалидировать refresh_token.
-- **Тело запроса**:
-  ```
-  {
-    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-  }
-  ```
-- **Ответ (200)**:
-  ```
-  {
-    "message": "Успешный выход"
-  }
-  ```
-- **Ошибки**: 400 (ошибка logout).
+```bash
+python -m venv .venv
+. .venv/bin/activate
+python -m pip install -r backend/requirements.txt
+cp backend/.env.example backend/.env
+```
 
-#### 5. Профиль (/api/users/profile, GET/PUT)
+Fill `backend/.env` with local values, then run:
 
-- **GET**: Получить профиль (auth required).
-- **PUT**: Обновить username.
-  - Тело: `{"username": "Новое Имя"}`
-- **Ответ**: {userId, email, username, createdAt, updatedAt}.
+```bash
+uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+```
 
-#### 6. Смена email/пароля (/api/users/change-email, /change-password, PUT)
+## GitHub Push Checklist
 
-- **change-email**: Тело: {"newEmail": "...", "password": "..."}
-- **change-password**: Тело: {"currentPassword": "...", "newPassword": "..." (min 6)}
-- **Ответ (200)**: {"message": "Успешно"}
+Before the first commit or push, verify ignored files:
 
-### Тест САН
+```bash
+git check-ignore -v backend/.env backend/serviceAccountKey.json Frontend/node_modules Frontend/dist
+git status --short
+git diff --cached --name-only
+```
 
-Тест состоит из 30 вопросов (по 10 на категорию: самочувствие, активность, настроение). Ответы от 1 до 7. Баллы - средние значения.
-
-#### 1. Вопросы (/api/san/questions, GET)
-
-- **Описание**: Получить список вопросов (auth required).
-- **Параметры**: limit (1-50, default 30).
-- **Ответ (200)**: Массив объектов:
-  ```
-  [
-    {
-      "positive_pole": "Самочувствие хорошее",
-      "negative_pole": "Самочувствие плохое",
-      "score": 0
-    },
-    ... (30 вопросов)
-  ]
-  ```
-
-#### 2. Обработка ответов (/api/san/process, POST)
-
-- **Описание**: Рассчитать баллы, интерпретацию и сохранить в DB (auth required).
-- **Тело запроса**:
-  ```
-  {
-    "answers": [4, 5, 3, ..., 6]  // 30 значений (1-7)
-  }
-  ```
-- **Ответ (200)**:
-  ```
-  {
-    "wellbeing": 5.2,
-    "activity": 4.8,
-    "mood": 5.5,
-    "timestamp": 1726723200000,
-    "interpretation": "Хорошее состояние! 🌟\nВы чувствуете себя достаточно хорошо и энергично.\n\nДетали:\n- Показатели находятся на стабильном уровне, есть небольшой потенциал для улучшения.\n\nПриоритетные области для улучшения: \n\nРекомендации: 📋\n- Сделай 10-минутную дыхательную гимнастику 💨\n  → Нормализует работу вегетативной нервной системы\n..."  // Полный текст
-  }
-  ```
-- **Ошибки**: 400 (неверные ответы, не 30 или вне 1-7).
-
-#### 3. Результаты тестов (/api/test-results)
-
-- **GET**: Последние результаты (auth required).
-  - Параметры: limit (1-50, default 5).
-  - Ответ: Массив {resultId, userId, activityScore, moodScore, wellbeingScore, timestamp}.
-- **POST**: Сохранить готовый результат (альтернатива process).
-  - Тело: {"activityScore": 5, "moodScore": 6, "wellbeingScore": 4, "timestamp": "..."}
-- **DELETE**: Сброс всех результатов (auth required).
-- **Ответы**: SuccessResponse или список TestResult.
-
-## Тест САН: Детали интерпретации
-
-- **Расчет**: Средние баллы по категориям (1-7).
-- **Overall score**: (wellbeing + activity + mood) / 3.
-- **Статусы**:
-  - ≥5.5: Отличное состояние! ⭐
-  - ≥4.5: Хорошее состояние! 🌟
-  - ≥3.5: Нормальное состояние 🌤
-  - ≥2.5: Пониженное состояние 🌥
-  - <2.5: Требуется восстановление ⛅
-- **Приоритеты**: Категории <4.0 (самочувствие, активность, настроение).
-- **Рекомендации**: Персонализированные на основе комбинаций (кризис, дисбаланс) + специфические по показателям.
-- **Кризис**: Если все ≤2.0, добавить телефон доверия +7 (495) 400-99-99.
-
-## Разработка
-
-- Для генерации моделей: fastapi-codegen из api_specification.json.
-- Firebase: настройте проект, добавьте creds.json.
-- Тестирование: Используйте /docs для Swagger UI.
+Make sure `.env`, `.env.local`, service account JSON files, `node_modules`, `dist`, and `__pycache__` are not staged.

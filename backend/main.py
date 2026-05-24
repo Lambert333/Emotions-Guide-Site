@@ -12,11 +12,11 @@ from slowapi.errors import RateLimitExceeded
 from fastapi import FastAPI, Depends, Header, HTTPException, Request
 from pydantic import conint
 from typing import Union, List, Optional
-from backend.services.auth_service import auth_service, refresh_tokens, logout_user_tokens
-from backend.services.SAN_test_service import SANTestService
-from backend.firebase_app import RealtimeDB, verify_firebase_token, create_firebase_custom_token
-from backend.utils.jwt_utils import generate_refresh_token
-from backend.models import (
+from .services.auth_service import auth_service, refresh_tokens, logout_user_tokens
+from .services.SAN_test_service import SANTestService
+from .firebase_app import RealtimeDB, verify_firebase_token, create_firebase_custom_token
+from .utils.jwt_utils import generate_refresh_token
+from .models import (
     LogoutRequest,
     AuthResponse,
     ChangeEmailRequest,
@@ -35,10 +35,24 @@ from backend.models import (
     UserProfile,
     SanProcessRequest,
     SanProcessResponse,
+    EmotionalIntelligenceProcessRequest,
+    EmotionalIntelligenceProcessResponse,
+    PSM25ProcessRequest,
+    PSM25ProcessResponse,
+    SpielbergerProcessRequest,
+    SpielbergerProcessResponse,
+    BoykoProcessRequest,
+    BoykoProcessResponse,
+    MaslachProcessRequest,
+    MaslachProcessResponse,
+    SelfEsteemProcessRequest,
+    SelfEsteemProcessResponse,
+    MoodScaleProcessRequest,
+    MoodScaleProcessResponse,
 )
 
-from backend.services.ai_service import AIService
-from backend.utils.time_utils import TimeAndSeasonData
+from .services.ai_service import AIService
+from .utils.time_utils import TimeAndSeasonData
 import json
 from fastapi.responses import StreamingResponse
 from datetime import datetime
@@ -73,7 +87,22 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
+from .services.emotional_intelligence_service import EmotionalIntelligenceService
+from .services.psm25_stress_service import PSM25StressService
+from .services.spielberger_anxiety_service import SpielbergerAnxietyService
+from .services.boyko_burnout_service import BoykoBurnoutService
+from .services.maslach_burnout_service import MaslachBurnoutService
+from .services.self_esteem_service import SelfEsteemService
+from .services.mood_scale_service import MoodScaleService
+
 san_service = SANTestService()
+emotional_intelligence_service = EmotionalIntelligenceService()
+psm25_service = PSM25StressService()
+spielberger_service = SpielbergerAnxietyService()
+boyko_service = BoykoBurnoutService()
+maslach_service = MaslachBurnoutService()
+self_esteem_service = SelfEsteemService()
+mood_scale_service = MoodScaleService()
 ai_service = AIService()
 
 async def get_current_user_id(authorization: Optional[str] = Header(None)) -> str:
@@ -192,7 +221,7 @@ def post_api_auth_register(body: RegisterRequest) -> Union[AuthResponse, Error]:
 )
 async def post_api_chat_analyze_emotions(user_id: str = Depends(get_current_user_id)):
     """
-    Анализ результатов теста САН с ИИ (стриминг SSE).
+    Анализ результатов теста САН с ИИ.
     """
     from backend.services.SAN_test_service import SANTestService
     san_service = SANTestService()
@@ -204,14 +233,6 @@ async def post_api_chat_analyze_emotions(user_id: str = Depends(get_current_user
     if now - last_analysis < 30000:
         raise HTTPException(status_code=429, detail="Cooldown: подождите 30 секунд")
 
-    # Placeholder
-    placeholder = {
-        'content': '⌛ Пожалуйста, подождите...',
-        'isUser': False,
-        'timestamp': datetime.now().isoformat()
-    }
-    placeholder_key = RealtimeDB.create(f'Users/{user_id}/ChatMessages', placeholder)
-
     try:
         time_data_obj = TimeAndSeasonData()
         time_data = time_data_obj.get_time_data()
@@ -220,8 +241,6 @@ async def post_api_chat_analyze_emotions(user_id: str = Depends(get_current_user
         username = RealtimeDB.get(f'Users/{user_id}').get('username', 'Пользователь')
 
         json_data = san_service.prepare_san_data_for_ai(sorted_results, username, time_data)
-        print("JSON data preview:", json_data[:500])  # Debug: preview data sent to AI
-        print("Number of tests:", len(sorted_results))
 
         if not sorted_results:
             prompt = ai_service.results_empty_prompt.format(
@@ -237,33 +256,35 @@ async def post_api_chat_analyze_emotions(user_id: str = Depends(get_current_user
                 season=time_data['season'],
                 json_data=json_data
             )
-            print("Prompt length:", len(prompt))  # Debug: prompt size
-            print("Prompt preview:", prompt[:500])  # Debug: start of prompt
 
-        async def generate_analysis():
-            # Получить полный ответ без стриминга
-            full_ai_generator = ai_service.send_request(prompt, "", stream=False)
-            full_ai = ""
-            async for content in full_ai_generator:
-                full_ai += content
-            # Update metadata
-            RealtimeDB.update(f'Users/{user_id}/metadata', {'last_analysis_time': now})
-            # Update placeholder with full
-            filtered_full = ai_service._filter_response(full_ai)  # Assume access
-            RealtimeDB.update(f'Users/{user_id}/ChatMessages/{placeholder_key}', {'content': filtered_full})
-            # Limit 50
-            all_msgs = RealtimeDB.get(f'Users/{user_id}/ChatMessages') or {}
-            if len(all_msgs) > 50:
-                sorted_keys = sorted(all_msgs.keys(), key=lambda k: all_msgs[k].get('timestamp', ''))[:len(all_msgs)-50]
-                for old_key in sorted_keys:
-                    RealtimeDB.delete(f'Users/{user_id}/ChatMessages/{old_key}')
-            # Yield полный ответ сразу
-            yield f"data: {json.dumps({'type': 'done', 'content': filtered_full, 'prompt': prompt})}\n\n"
+        # Update metadata
+        RealtimeDB.update(f'Users/{user_id}/metadata', {'last_analysis_time': now})
 
-        return StreamingResponse(generate_analysis(), media_type="text/event-stream")
+        # Get full non-streaming response
+        full_ai = ""
+        async for chunk in ai_service.send_request(prompt, "", stream=False, max_tokens=2000):
+            if chunk:
+                full_ai += chunk
+
+        # Save full AI response
+        filtered_full = ai_service._filter_response(full_ai)
+        ai_data = {
+            'content': filtered_full,
+            'isUser': False,
+            'timestamp': datetime.now().isoformat()
+        }
+        ai_key = RealtimeDB.create(f'Users/{user_id}/ChatMessages', ai_data)
+        
+        # Limit to 50 messages
+        all_msgs = RealtimeDB.get(f'Users/{user_id}/ChatMessages') or {}
+        if len(all_msgs) > 50:
+            sorted_keys = sorted(all_msgs.keys(), key=lambda k: all_msgs[k].get('timestamp', ''))[:len(all_msgs)-50]
+            for old_key in sorted_keys:
+                RealtimeDB.delete(f'Users/{user_id}/ChatMessages/{old_key}')
+
+        return {"success": True, "message": "Анализ завершен"}
 
     except Exception as e:
-        RealtimeDB.delete(f'Users/{user_id}/ChatMessages/{placeholder_key}')
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -273,7 +294,7 @@ async def post_api_chat_analyze_emotions(user_id: str = Depends(get_current_user
 )
 async def post_api_chat_messages(body: ChatMessageRequest, user_id: str = Depends(get_current_user_id)):
     """
-    Отправка сообщения пользователя в чат и получение AI ответа (стриминг SSE).
+    Отправка сообщения пользователя в чат и получение AI ответа.
     """
     if not body.isUser:
         raise HTTPException(status_code=400, detail="Only user messages allowed")
@@ -285,21 +306,13 @@ async def post_api_chat_messages(body: ChatMessageRequest, user_id: str = Depend
     if now - last_chat < 30000:
         raise HTTPException(status_code=429, detail="Cooldown: подождите 30 секунд")
 
-    # Save user
+    # Save user message
     user_data = {
         'content': body.content,
         'isUser': True,
         'timestamp': datetime.now().isoformat()
     }
     user_key = RealtimeDB.create(f'Users/{user_id}/ChatMessages', user_data)
-
-    # Placeholder AI
-    placeholder_data = {
-        'content': '⌛ Пожалуйста, подождите...',
-        'isUser': False,
-        'timestamp': datetime.now().isoformat()
-    }
-    placeholder_key = RealtimeDB.create(f'Users/{user_id}/ChatMessages', placeholder_data)
 
     try:
         # History last 10
@@ -308,30 +321,36 @@ async def post_api_chat_messages(body: ChatMessageRequest, user_id: str = Depend
         history = [{"role": "user" if m.get('isUser') else "assistant", "content": m.get('content', '')} for m in reversed(sorted_msgs)]
 
         # Prompt
-        history_str = "\n".join([f"{h['role'].capitalize()}: {h['content']}" for h in history])
-        prompt = f"{ai_service.system_prompt_chat}\n\nПредыдущий разговор:\n{history_str}"
+        prompt = ai_service.system_prompt_chat
 
-        async def generate_chat():
-            full_ai = ""
-            async for chunk in ai_service.send_request(prompt, body.content, history, stream=True):
+        # Update metadata
+        RealtimeDB.update(f'Users/{user_id}/metadata', {'last_chat_time': now})
+
+        # Get full non-streaming response
+        full_ai = ""
+        async for chunk in ai_service.send_request(prompt, body.content, history, stream=False, max_tokens=1500):
+            if chunk:
                 full_ai += chunk
-                yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
-            # Update
-            RealtimeDB.update(f'Users/{user_id}/metadata', {'last_chat_time': now})
-            filtered_full = ai_service._filter_response(full_ai)
-            RealtimeDB.update(f'Users/{user_id}/ChatMessages/{placeholder_key}', {'content': filtered_full})
-            # Limit 50
-            all_msgs = RealtimeDB.get(f'Users/{user_id}/ChatMessages') or {}
-            if len(all_msgs) > 50:
-                sorted_keys = sorted(all_msgs.keys(), key=lambda k: all_msgs[k].get('timestamp', ''))[:len(all_msgs)-50]
-                for old_key in sorted_keys:
-                    RealtimeDB.delete(f'Users/{user_id}/ChatMessages/{old_key}')
-            yield f"data: {json.dumps({'type': 'done', 'content': filtered_full})}\n\n"
 
-        return StreamingResponse(generate_chat(), media_type="text/event-stream")
+        # Save full AI response
+        filtered_full = ai_service._filter_response(full_ai)
+        ai_data = {
+            'content': filtered_full,
+            'isUser': False,
+            'timestamp': datetime.now().isoformat()
+        }
+        ai_key = RealtimeDB.create(f'Users/{user_id}/ChatMessages', ai_data)
+        
+        # Limit to 50 messages
+        all_msgs = RealtimeDB.get(f'Users/{user_id}/ChatMessages') or {}
+        if len(all_msgs) > 50:
+            sorted_keys = sorted(all_msgs.keys(), key=lambda k: all_msgs[k].get('timestamp', ''))[:len(all_msgs)-50]
+            for old_key in sorted_keys:
+                RealtimeDB.delete(f'Users/{user_id}/ChatMessages/{old_key}')
+
+        return {"success": True, "message": "Сообщение отправлено"}
 
     except Exception as e:
-        RealtimeDB.delete(f'Users/{user_id}/ChatMessages/{placeholder_key}')
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -351,8 +370,8 @@ def get_api_chat_messages(
     messages = RealtimeDB.get(f'Users/{user_id}/ChatMessages')
     if not messages:
         return []
-    # Сортировка по timestamp, limit последних
-    sorted_msgs = sorted(messages.values(), key=lambda x: x.get('timestamp', ''), reverse=True)[:limit]
+    # Сортировка по timestamp (старые сначала), limit последних
+    sorted_msgs = sorted(messages.values(), key=lambda x: x.get('timestamp', ''))[-limit:]
     return [ChatMessage(**msg) for msg in sorted_msgs]
 
 
@@ -367,6 +386,90 @@ def get_api_san_questions(user_id: str = Depends(get_current_user_id)) -> List[D
     Получение списка вопросов для теста САН
     """
     return san_service.get_questions()
+
+@app.get(
+    '/api/emotional_intelligence/questions',
+    response_model=List[dict],
+    responses={'401': {'model': Error}},
+    tags=['Тесты'],
+)
+def get_api_emotional_intelligence_questions(user_id: str = Depends(get_current_user_id)) -> List[Dict]:
+    """
+    Получение списка вопросов для теста на эмоциональный интеллект
+    """
+    return emotional_intelligence_service.get_questions()
+
+@app.get(
+    '/api/psm25_stress/questions',
+    response_model=List[dict],
+    responses={'401': {'model': Error}},
+    tags=['Тесты'],
+)
+def get_api_psm25_questions(user_id: str = Depends(get_current_user_id)) -> List[Dict]:
+    """
+    Получение списка вопросов для теста PSM-25 на стресс
+    """
+    return psm25_service.get_questions()
+
+@app.get(
+    '/api/spielberger_anxiety/questions',
+    response_model=List[dict],
+    responses={'401': {'model': Error}},
+    tags=['Тесты'],
+)
+def get_api_spielberger_questions(user_id: str = Depends(get_current_user_id)) -> List[Dict]:
+    """
+    Получение списка вопросов для теста Спилберга-Ханина на тревожность
+    """
+    return spielberger_service.get_questions()
+
+@app.get(
+    '/api/boyko_burnout/questions',
+    response_model=List[dict],
+    responses={'401': {'model': Error}},
+    tags=['Тесты'],
+)
+def get_api_boyko_questions(user_id: str = Depends(get_current_user_id)) -> List[Dict]:
+    """
+    Получение списка вопросов для теста Бойко на выгорание
+    """
+    return boyko_service.get_questions()
+
+@app.get(
+    '/api/maslach_burnout/questions',
+    response_model=List[dict],
+    responses={'401': {'model': Error}},
+    tags=['Тесты'],
+)
+def get_api_maslach_questions(user_id: str = Depends(get_current_user_id)) -> List[Dict]:
+    """
+    Получение списка вопросов для теста Маслач на выгорание
+    """
+    return maslach_service.get_questions()
+
+@app.get(
+    '/api/self_esteem/questions',
+    response_model=List[dict],
+    responses={'401': {'model': Error}},
+    tags=['Тесты'],
+)
+def get_api_self_esteem_questions(user_id: str = Depends(get_current_user_id)) -> List[Dict]:
+    """
+    Получение списка вопросов для теста на самооценку
+    """
+    return self_esteem_service.get_questions()
+
+@app.get(
+    '/api/mood_scale/questions',
+    response_model=List[dict],
+    responses={'401': {'model': Error}},
+    tags=['Тесты'],
+)
+def get_api_mood_scale_questions(user_id: str = Depends(get_current_user_id)) -> List[Dict]:
+    """
+    Получение списка вопросов для шкалы оценки настроения
+    """
+    return mood_scale_service.get_questions()
 
 
 @app.post(
@@ -390,6 +493,154 @@ def post_api_san_process(body: SanProcessRequest, user_id: str = Depends(get_cur
         mood=result['mood'],
         timestamp=result['timestamp'],
         interpretation=result['interpretation']
+    )
+
+@app.post(
+    '/api/emotional_intelligence/process',
+    response_model=EmotionalIntelligenceProcessResponse,
+    responses={'400': {'model': Error}, '401': {'model': Error}},
+    tags=['Тесты'],
+)
+def post_api_emotional_intelligence_process(body: EmotionalIntelligenceProcessRequest, user_id: str = Depends(get_current_user_id)) -> Union[EmotionalIntelligenceProcessResponse, Error]:
+    """
+    Обработка ответов теста на эмоциональный интеллект
+    """
+    result = emotional_intelligence_service.process_answers(body.answers)
+    success = emotional_intelligence_service.save_result(user_id, result['ei_score'], result['interpretation'])
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to save result")
+    return EmotionalIntelligenceProcessResponse(
+        ei_score=result['ei_score'],
+        interpretation=result['interpretation'],
+        timestamp=result['timestamp']
+    )
+
+@app.post(
+    '/api/psm25_stress/process',
+    response_model=PSM25ProcessResponse,
+    responses={'400': {'model': Error}, '401': {'model': Error}},
+    tags=['Тесты'],
+)
+def post_api_psm25_process(body: PSM25ProcessRequest, user_id: str = Depends(get_current_user_id)) -> Union[PSM25ProcessResponse, Error]:
+    """
+    Обработка ответов теста PSM-25 на стресс
+    """
+    result = psm25_service.process_answers(body.answers)
+    success = psm25_service.save_result(user_id, result['total_score'], result['interpretation'])
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to save result")
+    return PSM25ProcessResponse(
+        total_score=result['total_score'],
+        interpretation=result['interpretation'],
+        timestamp=result['timestamp']
+    )
+
+@app.post(
+    '/api/spielberger_anxiety/process',
+    response_model=SpielbergerProcessResponse,
+    responses={'400': {'model': Error}, '401': {'model': Error}},
+    tags=['Тесты'],
+)
+def post_api_spielberger_process(body: SpielbergerProcessRequest, user_id: str = Depends(get_current_user_id)) -> Union[SpielbergerProcessResponse, Error]:
+    """
+    Обработка ответов теста Спилберга-Ханина на тревожность
+    """
+    result = spielberger_service.process_answers(body.answers)
+    success = spielberger_service.save_result(user_id, result['situational_anxiety'], result['personal_anxiety'], result['interpretation'])
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to save result")
+    return SpielbergerProcessResponse(
+        situational_anxiety=result['situational_anxiety'],
+        personal_anxiety=result['personal_anxiety'],
+        interpretation=result['interpretation'],
+        timestamp=result['timestamp']
+    )
+
+@app.post(
+    '/api/boyko_burnout/process',
+    response_model=BoykoProcessResponse,
+    responses={'400': {'model': Error}, '401': {'model': Error}},
+    tags=['Тесты'],
+)
+def post_api_boyko_process(body: BoykoProcessRequest, user_id: str = Depends(get_current_user_id)) -> Union[BoykoProcessResponse, Error]:
+    """
+    Обработка ответов теста Бойко на выгорание
+    """
+    result = boyko_service.process_answers(body.answers)
+    success = boyko_service.save_result(user_id, result['total_score'], result['tension_score'], result['resistance_score'], result['exhaustion_score'], result['interpretation'])
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to save result")
+    return BoykoProcessResponse(
+        total_score=result['total_score'],
+        tension_score=result['tension_score'],
+        resistance_score=result['resistance_score'],
+        exhaustion_score=result['exhaustion_score'],
+        interpretation=result['interpretation'],
+        timestamp=result['timestamp']
+    )
+
+@app.post(
+    '/api/maslach_burnout/process',
+    response_model=MaslachProcessResponse,
+    responses={'400': {'model': Error}, '401': {'model': Error}},
+    tags=['Тесты'],
+)
+def post_api_maslach_process(body: MaslachProcessRequest, user_id: str = Depends(get_current_user_id)) -> Union[MaslachProcessResponse, Error]:
+    """
+    Обработка ответов теста Маслач на выгорание
+    """
+    result = maslach_service.process_answers(body.answers)
+    success = maslach_service.save_result(user_id, result['exhaustion_score'], result['depersonalization_score'], result['accomplishment_score'], result['interpretation'])
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to save result")
+    return MaslachProcessResponse(
+        exhaustion_score=result['exhaustion_score'],
+        depersonalization_score=result['depersonalization_score'],
+        accomplishment_score=result['accomplishment_score'],
+        interpretation=result['interpretation'],
+        timestamp=result['timestamp']
+    )
+
+@app.post(
+    '/api/self_esteem/process',
+    response_model=SelfEsteemProcessResponse,
+    responses={'400': {'model': Error}, '401': {'model': Error}},
+    tags=['Тесты'],
+)
+def post_api_self_esteem_process(body: SelfEsteemProcessRequest, user_id: str = Depends(get_current_user_id)) -> Union[SelfEsteemProcessResponse, Error]:
+    """
+    Обработка ответов теста на самооценку
+    """
+    result = self_esteem_service.process_answers(body.answers)
+    success = self_esteem_service.save_result(user_id, result['self_esteem_score'], result['interpretation'])
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to save result")
+    return SelfEsteemProcessResponse(
+        self_esteem_score=result['self_esteem_score'],
+        interpretation=result['interpretation'],
+        timestamp=result['timestamp']
+    )
+
+@app.post(
+    '/api/mood_scale/process',
+    response_model=MoodScaleProcessResponse,
+    responses={'400': {'model': Error}, '401': {'model': Error}},
+    tags=['Тесты'],
+)
+def post_api_mood_scale_process(body: MoodScaleProcessRequest, user_id: str = Depends(get_current_user_id)) -> Union[MoodScaleProcessResponse, Error]:
+    """
+    Обработка ответов шкалы оценки настроения
+    """
+    result = mood_scale_service.process_answers(body.answers)
+    success = mood_scale_service.save_result(user_id, result['positive_affect'], result['negative_affect'], result['mood_balance'], result['interpretation'])
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to save result")
+    return MoodScaleProcessResponse(
+        positive_affect=result['positive_affect'],
+        negative_affect=result['negative_affect'],
+        mood_balance=result['mood_balance'],
+        interpretation=result['interpretation'],
+        timestamp=result['timestamp']
     )
 
 
@@ -482,22 +733,23 @@ def put_api_users_change_email(
     return SuccessResponse(message="Email changed successfully")
 
 
-@app.put(
-    '/api/users/change-password',
+@app.post(
+    '/api/auth/change-password',
     response_model=SuccessResponse,
     responses={'400': {'model': Error}, '401': {'model': Error}},
-    tags=['Пользователи'],
+    tags=['Аутентификация'],
 )
-def put_api_users_change_password(
+def post_api_auth_change_password(
     body: ChangePasswordRequest,
     user_id: str = Depends(get_current_user_id)
 ) -> Union[SuccessResponse, Error]:
     """
     Смена пароля пользователя
     """
-    # Заглушка: Firebase Auth update_password, но требует current password verify
-    # auth.update_user(user_id, password=body.newPassword)
-    return SuccessResponse(message="Password changed successfully")
+    result = auth_service.change_password(user_id, body.currentPassword, body.newPassword)
+    if not result['success']:
+        raise HTTPException(status_code=400, detail=result['error'])
+    return SuccessResponse(message=result['message'])
 
 
 @app.get(
@@ -521,7 +773,7 @@ def get_api_users_profile(user_id: str = Depends(get_current_user_id)) -> Union[
         email=profile.get('email'),
         username=profile.get('username'),
         createdAt=datetime.fromisoformat(profile.get('createdAt')) if profile.get('createdAt') else None,
-        updatedAt=datetime.now()  # Pseudo
+        updatedAt=datetime.now().isoformat()  # Convert to ISO string
     )
 
 

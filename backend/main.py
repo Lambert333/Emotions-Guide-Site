@@ -54,11 +54,14 @@ from .models import (
 from .services.ai_service import AIService
 from .utils.time_utils import TimeAndSeasonData
 import json
+import logging
 from fastapi.responses import StreamingResponse
 from datetime import datetime
 
 from datetime import datetime
 from fastapi.middleware.cors import CORSMiddleware
+
+logger = logging.getLogger(__name__)
 
 
 app = FastAPI(
@@ -285,7 +288,9 @@ async def post_api_chat_analyze_emotions(user_id: str = Depends(get_current_user
         return {"success": True, "message": "Анализ завершен"}
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("AI emotion analysis failed")
+        status_code = 502 if "AI provider" in str(e) else 500
+        raise HTTPException(status_code=status_code, detail=str(e))
 
 
 @app.post(
@@ -351,7 +356,9 @@ async def post_api_chat_messages(body: ChatMessageRequest, user_id: str = Depend
         return {"success": True, "message": "Сообщение отправлено"}
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("AI chat message failed")
+        status_code = 502 if "AI provider" in str(e) else 500
+        raise HTTPException(status_code=status_code, detail=str(e))
 
 
 @app.get(

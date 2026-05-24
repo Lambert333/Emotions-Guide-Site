@@ -1,0 +1,56 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+!*.env.example
+backend/serviceAccountKey.json
+backend/certs.json
+**/serviceAccountKey.json
+**/*service-account*.json
+**/*.pem
+**/*.key
+
+# Python
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+pip-wheel-metadata/
+*.egg-info/
+
+# Frontend / Vite
+Frontend/node_modules/
+Frontend/dist/
+Frontend/.vite/
+node_modules/
+dist/
+.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Logs and local runtime files
+*.log
+logs/
+*.pid
+*.seed
+*.pid.lock
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*~

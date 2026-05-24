@@ -113,7 +113,7 @@ const AIPsychologistPage: React.FC = () => {
     setSending(true);
     setError("");
     setAiPending(true);
-    setCurrentAiMessage("ИИ-психолог готовит ответ... Пожалуйста, подождите.");
+    setCurrentAiMessage("ИИ-Помощник готовит ответ... Пожалуйста, подождите.");
 
     try {
       // Add user message immediately
@@ -153,7 +153,7 @@ const AIPsychologistPage: React.FC = () => {
     setError("");
     setAiPending(true);
     setCurrentAiMessage(
-      "Анализ вашего состояния в процессе... Пожалуйста, подождите."
+      "Подбор рекомендаций в процессе... Пожалуйста, подождите."
     );
 
     try {
@@ -163,9 +163,9 @@ const AIPsychologistPage: React.FC = () => {
     } catch (error: any) {
       console.error("Error analyzing emotions:", error);
       if (error.response?.status === 429) {
-        setError("Подождите перед следующим анализом");
+        setError("Подождите перед следующим подбором рекомендаций");
       } else {
-        setError("Ошибка анализа эмоций");
+        setError("Ошибка подбора рекомендаций");
       }
     } finally {
       setAnalyzing(false);
@@ -228,9 +228,9 @@ const AIPsychologistPage: React.FC = () => {
           }}
         >
           <Bot size={24} />
-          ИИ-психолог
+          ИИ-Помощник
         </h2>
-        <p>Получите персональные рекомендации на основе ваших данных</p>
+        <p>Получите персональные рекомендации на основе ваших отметок</p>
       </div>
 
       {error && <div className="card mb-8 error-message">{error}</div>}
@@ -253,7 +253,7 @@ const AIPsychologistPage: React.FC = () => {
             }}
           >
             <Brain size={20} />
-            Анализ вашего состояния
+            Подбор рекомендаций
           </h3>
           <button
             className="btn"
@@ -270,7 +270,7 @@ const AIPsychologistPage: React.FC = () => {
             ) : (
               <Sparkles size={14} style={{ marginRight: "4px" }} />
             )}
-            {analyzing ? "Анализ..." : "Проанализировать"}
+            {analyzing ? "Подбор..." : "Подобрать"}
           </button>
         </div>
 
@@ -285,14 +285,13 @@ const AIPsychologistPage: React.FC = () => {
               color: "var(--warning-color)",
             }}
           >
-            ⏳ Следующий анализ через: {analysisCooldownRemaining} сек.
+            ⏳ Следующий подбор через: {analysisCooldownRemaining} сек.
           </div>
         )}
 
         <p>
-          На основе последних результатов тестов САН будет проведен глубокий
-          анализ вашего эмоционального состояния с использованием искусственного
-          интеллекта.
+          На основе последних результатов тестов САН будет выполнен подбор
+          рекомендаций с использованием искусственного интеллекта.
         </p>
 
         <div
@@ -304,12 +303,12 @@ const AIPsychologistPage: React.FC = () => {
             fontSize: "14px",
           }}
         >
-          <strong>Что анализирует ИИ:</strong>
+          <strong>Что учитывает ИИ-Помощник:</strong>
           <ul style={{ paddingLeft: "30px", margin: "8px 0 0 0" }}>
-            <li>Динамика вашего состояния с течением времени</li>
+            <li>Динамика ваших отметок с течением времени</li>
             <li>Взаимосвязь между самочувствием, активностью и настроением</li>
-            <li>Паттерны и тренды эмоционального состояния</li>
-            <li>Персональные рекомендации для улучшения</li>
+            <li>Повторяющиеся изменения в отметках</li>
+            <li>Персональные рекомендации на каждый день</li>
           </ul>
         </div>
       </div>
@@ -332,7 +331,7 @@ const AIPsychologistPage: React.FC = () => {
             }}
           >
             <MessageSquare size={20} />
-            Чат с ИИ-психологом
+            Чат с ИИ-Помощником
           </h3>
           <button
             className="btn"
@@ -377,7 +376,7 @@ const AIPsychologistPage: React.FC = () => {
             >
               <Bot size={32} />
               <div>
-                Здравствуйте! Я ваш ИИ-психолог. Расскажите, как у вас дела?
+                Здравствуйте! Я ваш ИИ-Помощник. Расскажите, как у вас дела?
               </div>
             </div>
           ) : (
@@ -515,7 +514,7 @@ const AIPsychologistPage: React.FC = () => {
                   }}
                 >
                   {normalizeContent(
-                    currentAiMessage || "ИИ анализирует ваше состояние..."
+                    currentAiMessage || "ИИ-Помощник подбирает рекомендации..."
                   )}
                 </ReactMarkdown>
                 {currentAiMessage === "" && (
@@ -536,7 +535,7 @@ const AIPsychologistPage: React.FC = () => {
                       }}
                     ></div>
                     <span style={{ fontSize: "12px", opacity: 0.7 }}>
-                      Анализ в процессе... Это может занять несколько секунд
+                      Подбор в процессе... Это может занять несколько секунд
                     </span>
                   </div>
                 )}
@@ -584,7 +583,7 @@ const AIPsychologistPage: React.FC = () => {
       <div className="card">
         <h3 className="mb-4">Персональные рекомендации</h3>
         <p>
-          На основе вашего диалога и результатов тестов ИИ-психолог предоставит:
+          На основе вашего диалога и результатов тестов ИИ-Помощник предложит:
         </p>
         <div
           style={{
@@ -595,16 +594,16 @@ const AIPsychologistPage: React.FC = () => {
           }}
         >
           <ul style={{ paddingLeft: "30px", margin: 0 }}>
-            <li>Конкретные техники для улучшения состояния</li>
+            <li>Конкретные практики для самонаблюдения</li>
             <li>Рекомендации по распорядку дня</li>
-            <li>Упражнения для снижения стресса</li>
+            <li>Упражнения для расслабления</li>
             <li>Советы по улучшению сна и отдыха</li>
             <li>Методы повышения продуктивности</li>
           </ul>
         </div>
         <p style={{ fontSize: "14px", color: "var(--hint-color)", margin: 0 }}>
-          💡 Для получения рекомендаций начните диалог с ИИ-психологом или
-          запросите анализ вашего состояния
+          💡 Для получения рекомендаций начните диалог с ИИ-Помощником или
+          запросите подбор рекомендаций
         </p>
       </div>
     

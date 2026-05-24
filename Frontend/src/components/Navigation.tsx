@@ -15,7 +15,7 @@ const Navigation: React.FC<NavigationProps> = ({ collapsed, isMobileOpen, onNavi
     { path: '/', icon: Home, label: 'Главная' },
     { path: '/tests', icon: TestTube, label: 'Тесты' },
     { path: '/charts', icon: BarChart3, label: 'Графики' },
-    { path: '/ai-psychologist', icon: Bot, label: 'ИИ' },
+    { path: '/ai-psychologist', icon: Bot, label: 'ИИ-Помощник' },
     { path: '/relaxation', icon: Heart, label: 'Релаксация' },
     { path: '/profile', icon: User, label: 'Профиль' },
     { path: '/about', icon: Info, label: 'О нас' },

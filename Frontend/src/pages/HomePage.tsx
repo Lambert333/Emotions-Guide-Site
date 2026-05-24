@@ -128,10 +128,10 @@ const HomePage: React.FC = () => {
       }}>
         <div>
           <h1 style={{ fontSize: '48px', marginBottom: '20px', color: 'var(--text-color)' }}>
-            Эмоции Гид - Твой менеджер эмоций
+            Эмоции Гид - дневник настроения
           </h1>
           <p style={{ fontSize: '18px', marginBottom: '30px', color: 'var(--text-color)', lineHeight: 1.6 }}>
-            Отслеживай свое эмоциональное состояние и улучшай ментальное здоровье с помощью персонализированных инструментов
+            Отмечайте настроение, сохраняйте заметки, открывайте короткие практики и смотрите собственную динамику.
           </p>
           {isAuthenticated ? (
             <button className="btn" onClick={handleStartTest} style={{ fontSize: '18px', padding: '16px 32px' }}>
@@ -205,14 +205,14 @@ const HomePage: React.FC = () => {
         <FeatureCard
           icon={<BarChart3 size={48} />}
           title="Графики"
-          description="Отслеживайте динамику вашего состояния"
+          description="Смотрите динамику ваших отметок"
           onClick={() => handleNavigateTo('/charts')}
           disabled={!isAuthenticated}
         />
 
         <FeatureCard
           icon={<Bot size={48} />}
-          title="ИИ-психолог"
+          title="ИИ-Помощник"
           description="Получите персональные рекомендации"
           onClick={() => handleNavigateTo('/ai-psychologist')}
           disabled={!isAuthenticated}
@@ -221,7 +221,7 @@ const HomePage: React.FC = () => {
         <FeatureCard
           icon={<Heart size={48} />}
           title="Релаксация"
-          description="Техники для расслабления и снятия стресса"
+          description="Короткие практики для расслабления и отдыха"
           onClick={() => handleNavigateTo('/relaxation')}
         />
 
@@ -240,10 +240,9 @@ const HomePage: React.FC = () => {
       <div className="card">
         <h2 className="text-center mb-4">О приложении</h2>
         <p>
-          Эмоции Гид - это современное веб-приложение, разработанное для помощи пользователям
-          в отслеживании и управлении своими эмоциями. Приложение предоставляет инструменты
-          для анализа эмоционального состояния, ведения дневника настроения и получения
-          персонализированных рекомендаций.
+          Эмоции Гид - это современное веб-приложение для фиксации настроения,
+          личных заметок, коротких практик и получения персонализированных
+          рекомендаций.
         </p>
       </div>
 

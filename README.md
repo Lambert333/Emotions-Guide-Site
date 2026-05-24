@@ -1,34 +1,102 @@
-# Emotions Guide Web
+# Эмоции Гид
 
-Full-stack web application for tracking emotional state, tests, charts, Firebase authentication, and AI-assisted recommendations.
+`Эмоции Гид` - full-stack веб-приложение для самонаблюдения за эмоциональным состоянием. В проекте есть авторизация, психологические тесты, сохранение результатов, графики динамики, ИИ-психолог, упражнения для релаксации и профиль пользователя.
 
-## Stack
+Подробное описание текущей функциональности лежит в [FUNCTIONALITY.md](FUNCTIONALITY.md).
 
-- Frontend: React 18, TypeScript, Vite, Firebase client SDK.
-- Backend: FastAPI, Firebase Admin SDK, Realtime Database, PyJWT, SlowAPI, HTTPX.
+## Стек
 
-## Repository Safety
+Frontend:
 
-Real secrets must not be committed. Keep local values in ignored files:
+- React 18, TypeScript, Vite;
+- React Router DOM;
+- Axios;
+- Firebase client SDK;
+- Recharts;
+- React Toastify;
+- React Markdown;
+- Lucide React.
 
-- `backend/.env`
-- `Frontend/.env`
-- `Frontend/.env.local`
-- `backend/serviceAccountKey.json`
-- `backend/certs.json`
+Backend:
 
-Use the tracked templates instead:
+- FastAPI;
+- Pydantic;
+- Firebase Admin SDK;
+- Firebase Auth;
+- Firebase Realtime Database;
+- PyJWT;
+- SlowAPI;
+- HTTPX.
 
-- `backend/.env.example`
-- `Frontend/.env.example`
+## Структура
 
-For local backend development, keep the Firebase service account JSON outside the repository and point to it with `FIREBASE_SERVICE_ACCOUNT_PATH`. If a service account key was ever exposed publicly, rotate it in Google Cloud/Firebase and delete the old key.
+```text
+Frontend/                 React/Vite приложение
+  src/pages/              страницы приложения
+  src/components/         общие компоненты
+  src/services/api.ts     клиент backend API
+  src/firebase/config.ts  Firebase config frontend
 
-For CI/CD, store runtime secrets in GitHub Actions Secrets only when a workflow needs them. For Google/Firebase deployments, prefer GitHub OIDC with Google Workload Identity Federation over long-lived service account JSON secrets. In production, use the hosting provider's environment variables or a secret manager.
+backend/                  FastAPI backend
+  main.py                 приложение, CORS, endpoint
+  models.py               Pydantic-модели
+  firebase_app.py         Firebase Admin / Realtime DB
+  services/               auth, AI и сервисы тестов
+```
 
-`VITE_*` values and Firebase web config are bundled into frontend code, so they are not a place for private secrets. Protect Firebase access with Auth, database rules, API key restrictions, and allowed domains.
+## Возможности
 
-## Frontend Setup
+- Регистрация и вход пользователя.
+- Защищенные страницы через токен авторизации.
+- Профиль пользователя, редактирование `username`, смена пароля и выход.
+- 8 психологических тестов: САН, эмоциональный интеллект, PSM-25, Спилбергер-Ханин, Бойко, Маслач, самооценка, шкала настроения.
+- Сохранение результатов тестов в Firebase Realtime Database.
+- Графики динамики по результатам САН.
+- ИИ-психолог: чат, анализ эмоционального состояния, история сообщений и cooldown.
+- Дыхательное упражнение 4-7-8, таймер медитации и техники релаксации.
+- Публичная страница "О нас" с обратной связью и контактами.
+
+## Переменные окружения
+
+Backend использует `backend/.env`. Шаблон:
+
+```bash
+cp backend/.env.example backend/.env
+```
+
+Основные значения:
+
+- `FIREBASE_SERVICE_ACCOUNT_PATH` - путь к Firebase service account JSON вне репозитория.
+- `FIREBASE_DATABASE_URL` - URL Firebase Realtime Database.
+- `WEB_API_KEY` - Firebase Web API key для auth-запросов.
+- `JWT_SECRET` - секрет refresh-токенов.
+- `AI_API_KEY`, `AI_BASE_URL`, `AI_MODEL` - настройки внешнего AI API.
+
+Frontend использует `Frontend/.env.local`. Шаблон:
+
+```bash
+cp Frontend/.env.example Frontend/.env.local
+```
+
+Основная переменная:
+
+```env
+VITE_API_BASE_URL=http://localhost:8000
+```
+
+## Локальный запуск
+
+Backend:
+
+```bash
+python -m venv .venv
+. .venv/bin/activate
+python -m pip install -r backend/requirements.txt
+cp backend/.env.example backend/.env
+uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Frontend:
 
 ```bash
 cd Frontend
@@ -37,36 +105,40 @@ npm ci
 npm run dev
 ```
 
-For a production build:
+Production build frontend:
 
 ```bash
 cd Frontend
 npm run build
 ```
 
-## Backend Setup
+После запуска backend OpenAPI доступен по адресу:
 
-```bash
-python -m venv .venv
-. .venv/bin/activate
-python -m pip install -r backend/requirements.txt
-cp backend/.env.example backend/.env
+```text
+http://localhost:8000/docs
 ```
 
-Fill `backend/.env` with local values, then run:
+## Секреты
 
-```bash
-uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
-```
+Не коммитьте реальные секреты и локальные файлы окружения:
 
-## GitHub Push Checklist
+- `backend/.env`
+- `Frontend/.env`
+- `Frontend/.env.local`
+- `backend/serviceAccountKey.json`
+- `backend/certs.json`
 
-Before the first commit or push, verify ignored files:
+`VITE_*` значения попадают в frontend bundle, поэтому их нельзя считать приватными секретами. Firebase нужно защищать правилами Realtime Database, Auth, ограничениями API key и разрешенными доменами.
 
-```bash
-git check-ignore -v backend/.env backend/serviceAccountKey.json Frontend/node_modules Frontend/dist
-git status --short
-git diff --cached --name-only
-```
+## Известные ограничения
 
-Make sure `.env`, `.env.local`, service account JSON files, `node_modules`, `dist`, and `__pycache__` are not staged.
+- Графики и AI-анализ сейчас работают только с результатами САН.
+- Результаты САН и остальных тестов сохраняются в разные ветки Firebase: `Users` и `users`.
+- Режим `Все` на графиках использует ограниченный `limit`, а не полную выгрузку истории.
+- Расчет тренда на графиках может быть инвертирован из-за порядка сортировки результатов.
+- Refresh flow может возвращать Firebase custom token, тогда как защищенные endpoint ожидают Firebase ID token.
+- В PSM-25 текущие пороги делают высокий уровень стресса недостижимым при шкале 1-5.
+- В шкале настроения есть неточность текста интерпретации относительно фактического диапазона.
+- В тесте Бойко есть placeholder-вопросы.
+- Для production стоит ограничить CORS конкретными frontend-доменами.
+

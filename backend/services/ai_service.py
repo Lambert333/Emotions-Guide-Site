@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 class AIService:
     """
-    Сервис для интеграции с ИИ API (intelligence.io.solutions, модель Qwen/Qwen3-235B-A22B-FP8).
+    Сервис для интеграции с ИИ API (intelligence.io.solutions, модель openai/gpt-oss-120b).
     Поддержка стриминга SSE, фильтрации ответов, retry.
     """
     def __init__(self):

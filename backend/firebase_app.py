@@ -63,12 +63,12 @@ class Firebase:
     def verify_token(self, token: str) -> dict:
         """Проверка JWT токена с tolerance к clock skew"""
         try:
-            # Manual decode с leeway 300 сек (5 мин) для tolerance к clock skew
-            decoded_payload = jwt.decode(token, options={"verify_signature": False, "leeway": 300})
+            # Manual decode с leeway 3600 сек (1 час) для tolerance к clock skew в dev
+            decoded_payload = jwt.decode(token, options={"verify_signature": False, "leeway": 3600})
             iat = decoded_payload.get('iat')
             exp = decoded_payload.get('exp')
             current_time = time.time()
-            if iat > current_time + 300 or exp < current_time - 300:
+            if iat > current_time + 3600 or exp < current_time - 3600:
                 raise ValueError("Token time invalid with leeway")
             
             # Затем стандартная verify_id_token для sig и revoked check
@@ -81,7 +81,7 @@ class Firebase:
                 logger.warning(f"Clock skew detected, using manual decode: {error_str}")
                 # Manual full decode with leeway (but without sig verify for dev)
                 try:
-                    decoded_token = jwt.decode(token, options={"verify_signature": False, "leeway": 300})
+                    decoded_token = jwt.decode(token, options={"verify_signature": False, "leeway": 3600})
                     # Добавляем 'uid' как alias для 'sub' (как в Firebase SDK)
                     decoded_token['uid'] = decoded_token.get('sub', '')
                     # Проверяем issuer и aud для Firebase

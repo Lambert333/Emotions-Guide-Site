@@ -68,6 +68,9 @@ class AuthService:
     def login(self, email: str, password: str) -> Dict[str, Any]:
         """Аутентификация с выдачей ID token через REST API"""
         try:
+            if len(password) < 6:
+                return {'success': False, 'error': 'Неправильный логин или пароль'}
+
             # Используем Identity Toolkit REST API для signInWithPassword
             url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={self.web_api_key}"
             payload = {
@@ -110,13 +113,47 @@ class AuthService:
             }
         except requests.exceptions.RequestException as e:
             logger.error(f"Ошибка REST API: {e}")
-            return {'success': False, 'error': 'Серверная ошибка аутентификации'}
+            return {'success': False, 'error': 'Неправильный логин или пароль'}
         except ValueError as e:
             logger.error(f"Ошибка логина: {e}")
             return {'success': False, 'error': str(e)}
         except Exception as e:
             logger.error(f"Неожиданная ошибка логина: {e}")
             return {'success': False, 'error': 'Внутренняя ошибка сервера'}
+
+    def change_password(self, uid: str, current_password: str, new_password: str) -> Dict[str, Any]:
+        """Смена пароля пользователя с проверкой текущего пароля"""
+        try:
+            # Сначала проверяем текущий пароль через REST API
+            url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={self.web_api_key}"
+            payload = {
+                "email": self.auth.get_user(uid).email,
+                "password": current_password,
+                "returnSecureToken": True
+            }
+            response = requests.post(url, json=payload)
+            
+            if response.status_code != 200:
+                return {
+                    'success': False,
+                    'error': 'Текущий пароль неверен'
+                }
+            
+            # Если текущий пароль верный, обновляем пароль
+            self.auth.update_user(uid, password=new_password)
+            
+            logger.info(f"Пароль успешно изменен для пользователя: {uid}")
+            return {
+                'success': True,
+                'message': 'Пароль успешно изменен'
+            }
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Ошибка проверки пароля: {e}")
+            return {'success': False, 'error': 'Ошибка проверки пароля'}
+        except Exception as e:
+            logger.error(f"Ошибка смены пароля: {e}")
+            return {'success': False, 'error': str(e)}
 
 # Глобальный экземпляр сервиса
 auth_service = AuthService()

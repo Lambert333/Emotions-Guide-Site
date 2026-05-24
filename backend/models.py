@@ -46,7 +46,7 @@ class LoginRequest(BaseModel):
         if not re.match(r".+@.+\..+", v):
             raise ValueError('Неверный формат email')
         return v
-    password: str = Field(..., min_length=6, description='Пароль пользователя', example='password123')
+    password: str = Field(..., description='Пароль пользователя', example='password123')
 
 
 class UpdateProfileRequest(BaseModel):
@@ -104,6 +104,84 @@ class SanProcessRequest(BaseModel):
     answers: List[int] = Field(
         ..., min_items=30, max_items=30, description='Ответы на 30 вопросов (1-7)', example=[4]*30
     )
+
+class EmotionalIntelligenceProcessRequest(BaseModel):
+    answers: List[int] = Field(
+        ..., min_items=10, max_items=10, description='Ответы на вопросы эмоционального интеллекта (1-5)', example=[3]*10
+    )
+
+class EmotionalIntelligenceProcessResponse(BaseModel):
+    ei_score: float = Field(..., description='Балл эмоционального интеллекта (0-10)', example=6.5)
+    interpretation: str = Field(..., description='Интерпретация результатов')
+    timestamp: int = Field(..., description='Временная метка (ms)', example=1726723200000)
+
+class PSM25ProcessRequest(BaseModel):
+    answers: List[int] = Field(
+        ..., min_items=25, max_items=25, description='Ответы на вопросы PSM-25 (1-5)', example=[2]*25
+    )
+
+class PSM25ProcessResponse(BaseModel):
+    total_score: int = Field(..., description='Общий балл стресса (25-125)', example=75)
+    interpretation: str = Field(..., description='Интерпретация результатов')
+    timestamp: int = Field(..., description='Временная метка (ms)', example=1726723200000)
+
+class SpielbergerProcessRequest(BaseModel):
+    answers: List[int] = Field(
+        ..., min_items=40, max_items=40, description='Ответы на вопросы тревожности (1-4)', example=[2]*40
+    )
+
+class SpielbergerProcessResponse(BaseModel):
+    situational_anxiety: int = Field(..., description='Ситуативная тревожность (20-80)', example=35)
+    personal_anxiety: int = Field(..., description='Личностная тревожность (20-80)', example=40)
+    interpretation: str = Field(..., description='Интерпретация результатов')
+    timestamp: int = Field(..., description='Временная метка (ms)', example=1726723200000)
+
+class BoykoProcessRequest(BaseModel):
+    answers: List[int] = Field(
+        ..., min_items=84, max_items=84, description='Ответы на вопросы выгорания Бойко (1-5)', example=[3]*84
+    )
+
+class BoykoProcessResponse(BaseModel):
+    total_score: int = Field(..., description='Общий балл выгорания (0-420)', example=150)
+    tension_score: int = Field(..., description='Фаза напряжения (0-140)', example=50)
+    resistance_score: int = Field(..., description='Фаза резистенции (0-140)', example=60)
+    exhaustion_score: int = Field(..., description='Фаза истощения (0-140)', example=40)
+    interpretation: str = Field(..., description='Интерпретация результатов')
+    timestamp: int = Field(..., description='Временная метка (ms)', example=1726723200000)
+
+class MaslachProcessRequest(BaseModel):
+    answers: List[int] = Field(
+        ..., min_items=22, max_items=22, description='Ответы на вопросы Маслач (0-6)', example=[2]*22
+    )
+
+class MaslachProcessResponse(BaseModel):
+    exhaustion_score: int = Field(..., description='Эмоциональное истощение (0-54)', example=20)
+    depersonalization_score: int = Field(..., description='Деперсонализация (0-30)', example=10)
+    accomplishment_score: int = Field(..., description='Личностные достижения (0-48)', example=35)
+    interpretation: str = Field(..., description='Интерпретация результатов')
+    timestamp: int = Field(..., description='Временная метка (ms)', example=1726723200000)
+
+class SelfEsteemProcessRequest(BaseModel):
+    answers: List[int] = Field(
+        ..., min_items=15, max_items=15, description='Ответы на вопросы самооценки (1-5)', example=[3]*15
+    )
+
+class SelfEsteemProcessResponse(BaseModel):
+    self_esteem_score: float = Field(..., description='Балл самооценки (0-100)', example=65.0)
+    interpretation: str = Field(..., description='Интерпретация результатов')
+    timestamp: int = Field(..., description='Временная метка (ms)', example=1726723200000)
+
+class MoodScaleProcessRequest(BaseModel):
+    answers: List[int] = Field(
+        ..., min_items=10, max_items=10, description='Ответы на вопросы настроения (1-5)', example=[3]*10
+    )
+
+class MoodScaleProcessResponse(BaseModel):
+    positive_affect: int = Field(..., description='Позитивный аффект (5-25)', example=18)
+    negative_affect: int = Field(..., description='Негативный аффект (5-25)', example=12)
+    mood_balance: int = Field(..., description='Баланс настроения (-20 to 20)', example=6)
+    interpretation: str = Field(..., description='Интерпретация результатов')
+    timestamp: int = Field(..., description='Временная метка (ms)', example=1726723200000)
 
 
 class SanProcessResponse(BaseModel):

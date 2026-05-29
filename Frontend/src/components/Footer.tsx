@@ -12,7 +12,7 @@ const Footer: React.FC = () => {
     }}>
       <div className="container" style={{ textAlign: 'center' }}>
         <p style={{ margin: 0, color: 'var(--text-color)' }}>
-          &copy; 2025 Эмоции Гид.{' '}
+          &copy; 2026 Эмоции Гид.{' '}
           <a 
             href="https://lambert333.github.io/Emotions-Guide-Privacy/" 
             target="_blank" 

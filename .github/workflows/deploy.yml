@@ -46,10 +46,13 @@ jobs:
           ssh -p "${{ secrets.SSH_PORT }}" ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} '
             cd /var/www/emotions-guide &&
             printf "%s" "${{ secrets.BACKEND_ENV }}" > backend/.env &&
-            printf "%s" "${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}" > backend/serviceAccountKey.json &&
+            echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON_B64 }}" | base64 -d > backend/serviceAccountKey.json &&
             chmod 600 backend/.env backend/serviceAccountKey.json &&
+            ./venv/bin/python -m json.tool backend/serviceAccountKey.json > /dev/null &&
             python3 -m venv venv &&
             ./venv/bin/pip install --upgrade pip &&
             ./venv/bin/pip install -r backend/requirements.txt &&
-            sudo systemctl restart emotions-guide
+            sudo systemctl restart emotions-guide &&
+            sleep 2 &&
+            sudo systemctl is-active --quiet emotions-guide
           '

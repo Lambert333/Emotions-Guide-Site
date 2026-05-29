@@ -4,9 +4,14 @@ on:
   push:
     branches: [main]
 
+concurrency:
+  group: production-deploy
+  cancel-in-progress: true
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
@@ -20,39 +25,49 @@ jobs:
       - name: Build frontend
         working-directory: Frontend
         run: |
+          set -euo pipefail
           echo "VITE_API_BASE_URL=https://emotions-guide.ru" > .env.production
-          npm ci
+          npm ci --prefer-offline --no-audit --no-fund
           npm run build
 
       - name: Setup SSH
         run: |
+          set -euo pipefail
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          printf "%s" "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
 
       - name: Upload files
         run: |
+          set -euo pipefail
           rsync -az --delete \
-            --exclude ".git" \
-            --exclude "venv" \
-            --exclude "Frontend/node_modules" \
-            --exclude "backend/.env" \
-            --exclude "backend/serviceAccountKey.json" \
-            ./ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/emotions-guide/
+            --exclude ".env" \
+            --exclude "serviceAccountKey.json" \
+            backend/ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/emotions-guide/backend/
 
-      - name: Restart backend
+          rsync -az --delete \
+            Frontend/dist/ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/emotions-guide/Frontend/dist/
+
+      - name: Install backend and restart service
         run: |
+          set -euo pipefail
           ssh -p "${{ secrets.SSH_PORT }}" ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} '
-            cd /var/www/emotions-guide &&
-            printf "%s" "${{ secrets.BACKEND_ENV }}" > backend/.env &&
-            echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON_B64 }}" | base64 -d > backend/serviceAccountKey.json &&
-            chmod 600 backend/.env backend/serviceAccountKey.json &&
-            ./venv/bin/python -m json.tool backend/serviceAccountKey.json > /dev/null &&
-            python3 -m venv venv &&
-            ./venv/bin/pip install --upgrade pip &&
-            ./venv/bin/pip install -r backend/requirements.txt &&
-            sudo systemctl restart emotions-guide &&
-            sleep 2 &&
-            sudo systemctl is-active --quiet emotions-guide
+            set -euo pipefail
+            cd /var/www/emotions-guide
+
+            test -x ./venv/bin/python || python3 -m venv venv
+            ./venv/bin/pip install --disable-pip-version-check -r backend/requirements.txt
+
+            printf "%s" "${{ secrets.BACKEND_ENV }}" > backend/.env
+            echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON_B64 }}" | base64 -d > backend/serviceAccountKey.json
+
+            chmod 600 backend/.env backend/serviceAccountKey.json
+            ./venv/bin/python -m json.tool backend/serviceAccountKey.json > /dev/null
+            PYTHONPATH=/var/www/emotions-guide ./venv/bin/python -c "import backend.main; print(\"backend import ok\")"
+
+            sudo -n systemctl restart emotions-guide
+            sleep 2
+            sudo -n systemctl is-active --quiet emotions-guide
+            curl -fsS http://127.0.0.1:8000/docs > /dev/null
           '

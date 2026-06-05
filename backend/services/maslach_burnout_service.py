@@ -3,6 +3,8 @@ import firebase_admin
 from firebase_admin import db
 from datetime import datetime
 
+from backend.services.test_results_service import save_test_result
+
 class MaslachQuestion:
     def __init__(self, text: str, scale: str):
         self.text = text
@@ -197,6 +199,4 @@ class MaslachBurnoutService:
             'activityScore': max(0, 10 - burnout_level),
             'moodScore': max(0, 10 - burnout_level)
         }
-        ref = db.reference(f'users/{user_id}/test_results/maslach_burnout')
-        new_ref = ref.push(result_data)
-        return new_ref.key is not None
+        return save_test_result(user_id, "maslach_burnout", result_data)

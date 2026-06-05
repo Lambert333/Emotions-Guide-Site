@@ -3,6 +3,8 @@ import firebase_admin
 from firebase_admin import db
 from datetime import datetime
 
+from backend.services.test_results_service import save_test_result
+
 class SpielbergerQuestion:
     def __init__(self, text: str, options: List[str], is_reverse: bool = False, scale: str = 'situational'):
         self.text = text
@@ -219,6 +221,4 @@ class SpielbergerAnxietyService:
             'activityScore': max(0, 10 - avg_score),
             'moodScore': max(0, 10 - avg_score)
         }
-        ref = db.reference(f'users/{user_id}/test_results/spielberger_anxiety')
-        new_ref = ref.push(result_data)
-        return new_ref.key is not None
+        return save_test_result(user_id, "spielberger_anxiety", result_data)

@@ -2,6 +2,8 @@ from typing import List, Dict
 import firebase_admin
 from firebase_admin import db
 from datetime import datetime
+
+from backend.services.test_results_service import save_test_result
 import pytz
 
 class EmotionalIntelligenceQuestion:
@@ -171,6 +173,4 @@ class EmotionalIntelligenceService:
             'activityScore': ei_score,
             'moodScore': ei_score
         }
-        ref = db.reference(f'users/{user_id}/test_results/emotional_intelligence')
-        new_ref = ref.push(result_data)
-        return new_ref.key is not None
+        return save_test_result(user_id, "emotional_intelligence", result_data)

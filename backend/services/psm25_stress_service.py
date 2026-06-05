@@ -3,6 +3,8 @@ import firebase_admin
 from firebase_admin import db
 from datetime import datetime
 
+from backend.services.test_results_service import save_test_result
+
 class PSM25Question:
     def __init__(self, text: str, options: List[str]):
         self.text = text
@@ -145,6 +147,4 @@ class PSM25StressService:
             'activityScore': normalized_score,
             'moodScore': normalized_score
         }
-        ref = db.reference(f'users/{user_id}/test_results/psm25_stress')
-        new_ref = ref.push(result_data)
-        return new_ref.key is not None
+        return save_test_result(user_id, "psm25_stress", result_data)

@@ -87,7 +87,6 @@ class AuthService:
             
             uid = data['localId']  # uid из ответа
             id_token = data['idToken']  # ID token для backend-запросов
-            firebase_refresh_token = data['refreshToken']  # Firebase refresh token (не используем для blacklist)
             
             # Получаем дополнительные данные из Realtime DB
             user_data = RealtimeDB.get(f'Users/{uid}')
@@ -120,6 +119,23 @@ class AuthService:
         except Exception as e:
             logger.error(f"Неожиданная ошибка логина: {e}")
             return {'success': False, 'error': 'Внутренняя ошибка сервера'}
+
+    def exchange_custom_token_for_id_token(self, uid: str) -> str:
+        """Обмен Firebase custom token на Firebase ID token для защищенных endpoint."""
+        custom_token = create_firebase_custom_token(uid)
+        url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key={self.web_api_key}"
+        payload = {
+            "token": custom_token,
+            "returnSecureToken": True
+        }
+        response = requests.post(url, json=payload, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+
+        id_token = data.get('idToken')
+        if not id_token:
+            raise ValueError("Firebase ID token not returned")
+        return id_token
 
     def change_password(self, uid: str, current_password: str, new_password: str) -> Dict[str, Any]:
         """Смена пароля пользователя с проверкой текущего пароля"""
@@ -172,7 +188,7 @@ def refresh_tokens(refresh_token: str) -> Dict[str, Any]:
 
         decoded = decode_refresh_token(refresh_token)
         uid = decoded['uid']
-        access_token = create_firebase_custom_token(uid)
+        access_token = auth_service.exchange_custom_token_for_id_token(uid)
         new_refresh_token = generate_refresh_token(uid)
         return {
             'success': True,
@@ -186,6 +202,12 @@ def refresh_tokens(refresh_token: str) -> Dict[str, Any]:
         return {
             'success': False,
             'error': str(e)
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Ошибка refresh через Firebase REST API: {e}")
+        return {
+            'success': False,
+            'error': 'Не удалось обновить access token'
         }
 
 

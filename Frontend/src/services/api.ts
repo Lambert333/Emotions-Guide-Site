@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosError, AxiosHeaders, InternalAxiosRequestConfig } from 'axios';
 
 // Базовый URL для API бекенда
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://emotions-guide.ru/';
@@ -39,6 +39,10 @@ export interface AuthResponse {
 
 export interface ErrorResponse {
   detail: string;
+}
+
+interface RetryableRequestConfig extends InternalAxiosRequestConfig {
+  _retry?: boolean;
 }
 
 export interface UserProfile {
@@ -209,6 +213,17 @@ export const setAuthToken = (token: string | null) => {
     api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
   } else {
     delete api.defaults.headers.common['Authorization'];
+  }
+};
+
+const clearAuthAndRedirect = () => {
+  localStorage.removeItem('authToken');
+  localStorage.removeItem('refreshToken');
+  localStorage.removeItem('userId');
+  setAuthToken(null);
+
+  if (window.location.pathname !== '/auth') {
+    window.location.href = '/auth';
   }
 };
 
@@ -440,16 +455,43 @@ export const analyticsAPI = {
 // Интерцептор для обработки ошибок авторизации
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Очищаем токен при ошибке авторизации
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('userId');
-      setAuthToken(null);
-      // Перенаправляем на страницу авторизации
-      window.location.href = '/auth';
+  async (error: AxiosError) => {
+    const originalRequest = error.config as RetryableRequestConfig | undefined;
+    const isRefreshRequest = originalRequest?.url?.includes('/api/auth/refresh');
+    const refreshToken = localStorage.getItem('refreshToken');
+
+    if (
+      error.response?.status === 401 &&
+      originalRequest &&
+      !originalRequest._retry &&
+      !isRefreshRequest &&
+      refreshToken
+    ) {
+      originalRequest._retry = true;
+
+      try {
+        const authResponse = await authAPI.refresh(refreshToken);
+
+        localStorage.setItem('authToken', authResponse.accessToken);
+        localStorage.setItem('refreshToken', authResponse.refreshToken);
+        localStorage.setItem('userId', authResponse.userId);
+        setAuthToken(authResponse.accessToken);
+
+        const headers = AxiosHeaders.from(originalRequest.headers);
+        headers.set('Authorization', `Bearer ${authResponse.accessToken}`);
+        originalRequest.headers = headers;
+
+        return api(originalRequest);
+      } catch (refreshError) {
+        clearAuthAndRedirect();
+        return Promise.reject(refreshError);
+      }
     }
+
+    if (error.response?.status === 401) {
+      clearAuthAndRedirect();
+    }
+
     return Promise.reject(error);
   }
 );

@@ -71,6 +71,9 @@ cp backend/.env.example backend/.env
 - `WEB_API_KEY` - Firebase Web API key для auth-запросов.
 - `JWT_SECRET` - секрет refresh-токенов.
 - `AI_API_KEY`, `AI_BASE_URL`, `AI_MODEL` - настройки внешнего AI API.
+- `CORS_ALLOWED_ORIGINS` - список frontend origins через запятую для CORS.
+
+Если frontend запускается на другом порту или через LAN IP, добавьте точный origin в `CORS_ALLOWED_ORIGINS`, например `http://192.168.1.101:3000`.
 
 Frontend использует `Frontend/.env.local`. Шаблон:
 
@@ -136,9 +139,7 @@ http://localhost:8000/docs
 - Результаты САН и остальных тестов сохраняются в разные ветки Firebase: `Users` и `users`.
 - Режим `Все` на графиках использует ограниченный `limit`, а не полную выгрузку истории.
 - Расчет тренда на графиках может быть инвертирован из-за порядка сортировки результатов.
-- Refresh flow может возвращать Firebase custom token, тогда как защищенные endpoint ожидают Firebase ID token.
 - В PSM-25 текущие пороги делают высокий уровень стресса недостижимым при шкале 1-5.
 - В шкале настроения есть неточность текста интерпретации относительно фактического диапазона.
 - В тесте Бойко есть placeholder-вопросы.
-- Для production стоит ограничить CORS конкретными frontend-доменами.
 

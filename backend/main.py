@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import List, Optional, Union
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -14,8 +15,7 @@ from pydantic import conint
 from typing import Union, List, Optional
 from .services.auth_service import auth_service, refresh_tokens, logout_user_tokens
 from .services.SAN_test_service import SANTestService
-from .firebase_app import RealtimeDB, verify_firebase_token, create_firebase_custom_token
-from .utils.jwt_utils import generate_refresh_token
+from .firebase_app import RealtimeDB, verify_firebase_token
 from .models import (
     LogoutRequest,
     AuthResponse,
@@ -63,6 +63,26 @@ from fastapi.middleware.cors import CORSMiddleware
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "https://emotions-guide.ru",
+    "https://www.emotions-guide.ru",
+]
+
+
+def get_cors_allowed_origins() -> List[str]:
+    """Return comma-separated CORS origins from env or safe local/prod defaults."""
+    configured_origins = os.getenv("CORS_ALLOWED_ORIGINS", "")
+    parsed_origins = [
+        origin.strip().rstrip("/")
+        for origin in configured_origins.split(",")
+        if origin.strip()
+    ]
+    return parsed_origins or DEFAULT_CORS_ALLOWED_ORIGINS
+
 
 app = FastAPI(
     title='Эмоции Гид API',
@@ -79,7 +99,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=get_cors_allowed_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -214,7 +234,7 @@ def post_api_auth_register(body: RegisterRequest) -> Union[AuthResponse, Error]:
         email=data['email'],
         username=data['username'],
         accessToken=data['accessToken'],
-        refreshToken=generate_refresh_token(data['userId'])
+        refreshToken=data['refreshToken']
     )
 
 

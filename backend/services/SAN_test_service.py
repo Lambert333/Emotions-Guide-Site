@@ -4,6 +4,8 @@ from firebase_admin import db
 from datetime import datetime
 import pytz
 
+from backend.services.test_results_service import save_test_result
+
 class SanQuestion:
     def __init__(self, positive_pole: str, negative_pole: str, score: int = 0):
         self.positive_pole = positive_pole
@@ -342,7 +344,7 @@ class SANTestService:
         return "\n".join(state)
 
 
-    def save_result(self, user_id: str, wellbeing: float, activity: float, mood: float) -> bool:
+    def save_result(self, user_id: str, wellbeing: float, activity: float, mood: float, interpretation: str = "") -> bool:
         """Сохраняет результат в Firebase."""
         if not user_id:
             raise ValueError("Требуется ID пользователя.")
@@ -352,11 +354,10 @@ class SANTestService:
             'wellbeingScore': wellbeing,
             'activityScore': activity,
             'moodScore': mood,
+            'interpretation': interpretation,
             'timestamp': timestamp
         }
-        ref = db.reference(f'Users/{user_id}/TestResults')
-        new_ref = ref.push(result_data)
-        return new_ref.key is not None  # Успех если ключ создан
+        return save_test_result(user_id, "san", result_data)
 
     def prepare_san_data_for_ai(self, results: list, username: str, time_data: dict) -> str:
         """

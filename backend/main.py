@@ -12,10 +12,16 @@ from slowapi.errors import RateLimitExceeded
 
 from fastapi import FastAPI, Depends, Header, HTTPException, Request
 from pydantic import conint
-from typing import Union, List, Optional
 from .services.auth_service import auth_service, refresh_tokens, logout_user_tokens
 from .services.SAN_test_service import SANTestService
 from .firebase_app import RealtimeDB, verify_firebase_token
+from .services.test_results_service import (
+    build_ai_results_context,
+    build_chat_results_context,
+    delete_san_results,
+    get_all_test_results_for_ai,
+    get_san_results,
+)
 from .models import (
     LogoutRequest,
     AuthResponse,
@@ -244,11 +250,8 @@ def post_api_auth_register(body: RegisterRequest) -> Union[AuthResponse, Error]:
 )
 async def post_api_chat_analyze_emotions(user_id: str = Depends(get_current_user_id)):
     """
-    Анализ результатов теста САН с ИИ.
+    Анализ результатов психологических тестов с ИИ.
     """
-    from backend.services.SAN_test_service import SANTestService
-    san_service = SANTestService()
-
     # Cooldown check
     metadata = RealtimeDB.get(f'Users/{user_id}/metadata') or {}
     last_analysis = metadata.get('last_analysis_time', 0)
@@ -259,13 +262,13 @@ async def post_api_chat_analyze_emotions(user_id: str = Depends(get_current_user
     try:
         time_data_obj = TimeAndSeasonData()
         time_data = time_data_obj.get_time_data()
-        results = RealtimeDB.get(f'Users/{user_id}/TestResults') or {}
-        sorted_results = sorted(results.values(), key=lambda x: x.get('timestamp', 0), reverse=True)[:25]
-        username = RealtimeDB.get(f'Users/{user_id}').get('username', 'Пользователь')
+        user_profile = RealtimeDB.get(f'Users/{user_id}') or {}
+        username = user_profile.get('username', 'Пользователь')
+        test_results = get_all_test_results_for_ai(user_id, limit=25)
 
-        json_data = san_service.prepare_san_data_for_ai(sorted_results, username, time_data)
+        json_data = build_ai_results_context(test_results, username, time_data)
 
-        if not sorted_results:
+        if not test_results:
             prompt = ai_service.results_empty_prompt.format(
                 username=username,
                 season=time_data['season'],
@@ -347,6 +350,17 @@ async def post_api_chat_messages(body: ChatMessageRequest, user_id: str = Depend
 
         # Prompt
         prompt = ai_service.system_prompt_chat
+        user_profile = RealtimeDB.get(f'Users/{user_id}') or {}
+        username = user_profile.get('username', 'Пользователь')
+        time_data = TimeAndSeasonData().get_time_data()
+        test_results = get_all_test_results_for_ai(user_id, limit=25)
+        test_context = build_chat_results_context(test_results, username, time_data)
+        if test_context:
+            prompt = (
+                f"{prompt}\n\n{test_context}\n"
+                "Если пользователь спрашивает о своем состоянии, учитывай этот контекст мягко и кратко. "
+                "Не ставь диагнозы и не показывай JSON пользователю."
+            )
 
         # Update metadata
         RealtimeDB.update(f'Users/{user_id}/metadata', {'last_chat_time': now})
@@ -511,7 +525,13 @@ def post_api_san_process(body: SanProcessRequest, user_id: str = Depends(get_cur
     """
     result = san_service.process_answers(body.answers)
     # Автоматически сохранить
-    success = san_service.save_result(user_id, result['wellbeing'], result['activity'], result['mood'])
+    success = san_service.save_result(
+        user_id,
+        result['wellbeing'],
+        result['activity'],
+        result['mood'],
+        result['interpretation']
+    )
     if not success:
         raise HTTPException(status_code=500, detail="Failed to save result")
     return SanProcessResponse(
@@ -702,17 +722,13 @@ def get_api_test_results(
     user_id: str = Depends(get_current_user_id)
 ) -> Union[List[TestResult], Error]:
     """
-    Получение последних результатов тестов
+    Получение последних результатов САН для графиков
     """
-    results = RealtimeDB.get(f'Users/{user_id}/TestResults')
-    if not results:
-        return []
-    # Сортировка по timestamp, limit последних
-    sorted_results = sorted(results.values(), key=lambda x: x.get('timestamp', 0), reverse=True)[:limit]
+    sorted_results = get_san_results(user_id, limit)
     test_results = []
     for res in sorted_results:
         test_results.append(TestResult(
-            resultId=str(hash(str(res))),  # Pseudo ID
+            resultId=res.get('resultId') or str(hash(str(res))),
             userId=user_id,
             wellbeingScore=int(res.get('wellbeingScore', 0)),
             activityScore=int(res.get('activityScore', 0)),
@@ -730,10 +746,10 @@ def get_api_test_results(
 )
 def delete_api_test_results(user_id: str = Depends(get_current_user_id)) -> Union[SuccessResponse, Error]:
     """
-    Сброс всех результатов тестов
+    Сброс результатов САН для графиков
     """
-    RealtimeDB.delete(f'Users/{user_id}/TestResults')
-    return SuccessResponse(message="All test results deleted")
+    deleted_count = delete_san_results(user_id)
+    return SuccessResponse(message=f"SAN test results deleted: {deleted_count}")
 
 
 @app.put(

@@ -3,6 +3,8 @@ import firebase_admin
 from firebase_admin import db
 from datetime import datetime
 
+from backend.services.test_results_service import save_test_result
+
 class MoodQuestion:
     def __init__(self, text: str, affect_type: str):
         self.text = text
@@ -204,6 +206,4 @@ class MoodScaleService:
             'activityScore': max(0, min(10, normalized_mood)),
             'moodScore': max(0, min(10, normalized_mood))
         }
-        ref = db.reference(f'users/{user_id}/test_results/mood_scale')
-        new_ref = ref.push(result_data)
-        return new_ref.key is not None
+        return save_test_result(user_id, "mood_scale", result_data)

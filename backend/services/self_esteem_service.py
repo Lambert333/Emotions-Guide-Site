@@ -3,6 +3,8 @@ import firebase_admin
 from firebase_admin import db
 from datetime import datetime
 
+from backend.services.test_results_service import save_test_result
+
 class SelfEsteemQuestion:
     def __init__(self, text: str, is_reverse: bool = True):
         self.text = text
@@ -147,6 +149,4 @@ class SelfEsteemService:
             'activityScore': normalized_score,
             'moodScore': normalized_score
         }
-        ref = db.reference(f'users/{user_id}/test_results/self_esteem')
-        new_ref = ref.push(result_data)
-        return new_ref.key is not None
+        return save_test_result(user_id, "self_esteem", result_data)

@@ -1232,10 +1232,15 @@ Frontend защищает приватные маршруты через `Protec
 
 Backend защищает приватные endpoint через проверку Firebase token.
 
-CORS настроен с:
+CORS настроен через env-переменную `CORS_ALLOWED_ORIGINS` с безопасными local/prod defaults:
 
 ```text
-allow_origins=["*"]
+http://localhost:3000
+http://127.0.0.1:3000
+http://localhost:5173
+http://127.0.0.1:5173
+https://emotions-guide.ru
+https://www.emotions-guide.ru
 ```
 
 SlowAPI подключен, но в найденных route-файлах явные per-route decorators rate limit не обнаружены. Основные пользовательские ограничения для AI реализованы вручную через cooldown.
@@ -1351,9 +1356,9 @@ users
 
 Это может усложнять поддержку и приводить к рассинхронизации данных между тестами, графиками и аналитикой.
 
-### 19.7. Refresh token может возвращать несовместимый access token
+### 19.7. Refresh-token flow исправлен: access token возвращается как Firebase ID token
 
-Login возвращает Firebase ID token, а refresh-сценарий создает Firebase custom token. Если защищенные endpoint ожидают именно Firebase ID token, обновленный access token может не пройти проверку.
+Login возвращает Firebase ID token. Refresh-сценарий теперь проверяет project refresh token, сверяет его с blacklist, создает Firebase custom token только как промежуточный токен и обменивает его через Firebase Identity Toolkit `signInWithCustomToken` на Firebase ID token. Именно этот ID token возвращается frontend как `accessToken`, поэтому защищенные endpoint могут проверять его через `verify_id_token`.
 
 ### 19.8. PSM-25 имеет недостижимый высокий уровень
 
@@ -1367,9 +1372,9 @@ Login возвращает Firebase ID token, а refresh-сценарий соз
 
 В исходниках обнаружены вопросы с placeholder-формулировками. Перед использованием в реальном психологическом сценарии нужно заменить их на валидированные вопросы.
 
-### 19.11. Ошибки загрузки статических ассетов
+### 19.11. Ошибки загрузки статических ассетов исправлены
 
-Live-консоль показала 404 для:
+Live-консоль ранее показывала 404 для:
 
 ```text
 /font/montserrat_bold.ttf
@@ -1379,17 +1384,22 @@ Live-консоль показала 404 для:
 /vite.svg
 ```
 
-В проекте шрифты лежат в `public/fonts`, а CSS обращается к `font/...`. Нужно синхронизировать пути.
+Пути синхронизированы: шрифты из `public/fonts` подключаются как `/fonts/...`, а favicon ссылается на существующий `/logo.png`.
 
-### 19.12. CORS открыт для всех origins
+### 19.12. CORS ограничен конкретными origins
 
-Backend настроен с:
+Backend больше не использует wildcard `allow_origins=["*"]`. Разрешенные origins берутся из `CORS_ALLOWED_ORIGINS`; если переменная не задана, применяются local/prod defaults:
 
 ```text
-allow_origins=["*"]
+http://localhost:3000
+http://127.0.0.1:3000
+http://localhost:5173
+http://127.0.0.1:5173
+https://emotions-guide.ru
+https://www.emotions-guide.ru
 ```
 
-Для production лучше ограничить origins конкретными доменами frontend.
+Для другого production-домена или LAN-запуска frontend нужно добавить origin в `backend/.env`.
 
 ### 19.13. Frontend-защита маршрутов основана только на localStorage
 
@@ -1445,10 +1455,9 @@ allow_origins=["*"]
 3. Привести сортировку результатов графиков к хронологическому порядку перед расчетом тренда.
 4. Решить, должны ли все тесты попадать в единую историю и аналитику.
 5. Унифицировать Firebase paths `Users` и `users`.
-6. Исправить refresh-token flow: возвращать токен, который backend сможет валидировать как ожидаемый access token.
+6. Провести live-проверку refresh-token flow после исправления: refresh -> защищенный endpoint.
 7. Пересмотреть пороги PSM-25.
 8. Исправить текст шкалы настроения.
 9. Заменить placeholder-вопросы теста Бойко.
 10. Исправить пути к шрифтам и favicon.
-11. Ограничить CORS для production.
-12. Добавить e2e-тесты для ключевых сценариев: login, САН, графики, профиль, релаксация.
+11. Добавить e2e-тесты для ключевых сценариев: login, САН, графики, профиль, релаксация.

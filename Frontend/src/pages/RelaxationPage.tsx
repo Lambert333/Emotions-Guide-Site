@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Play, Pause, RotateCcw, Heart, Clock } from 'lucide-react';
+import {
+  ANALYTICS_SOURCE,
+  AnalyticsEvents,
+  getDurationGroup,
+} from '../shared/analytics/analyticsEvents';
+import { trackEvent } from '../shared/analytics/firebaseAnalytics';
 
 interface ExerciseState {
   isRunning: boolean;
@@ -61,6 +67,12 @@ const RelaxationPage: React.FC = () => {
             clearInterval(meditationInterval);
             // Play completion sound
             new Audio('https://assets.mixkit.co/sfx/preview/mixkit-magic-sparkles-3001.mp3').play();
+            trackEvent(AnalyticsEvents.PRACTICE_COMPLETED, {
+              source: ANALYTICS_SOURCE,
+              practice_id: 'meditation_timer',
+              practice_type: 'meditation',
+              duration_group: getDurationGroup(prev.totalTime),
+            });
             return { ...prev, isRunning: false, timeRemaining: 0 };
           }
           return { ...prev, timeRemaining: prev.timeRemaining - 1 };
@@ -70,11 +82,6 @@ const RelaxationPage: React.FC = () => {
 
     return () => clearInterval(meditationInterval);
   }, [meditationTimer.isRunning]);
-
-  // Отслеживаем изменения состояния meditationTimer для отладки
-  useEffect(() => {
-    console.log('meditationTimer changed:', meditationTimer);
-  }, [meditationTimer]);
 
   const getPhaseTime = (phase: string) => {
     switch (phase) {
@@ -117,6 +124,12 @@ const RelaxationPage: React.FC = () => {
   };
 
   const startBreathingExercise = () => {
+    trackEvent(AnalyticsEvents.PRACTICE_OPENED, {
+      source: ANALYTICS_SOURCE,
+      practice_id: 'breathing_4_7_8',
+      practice_type: 'breathing',
+    });
+
     setBreathingExercise({
       isRunning: true,
       timeRemaining: 4,
@@ -135,7 +148,27 @@ const RelaxationPage: React.FC = () => {
   };
 
   const startMeditation = () => {
+    trackEvent(AnalyticsEvents.PRACTICE_OPENED, {
+      source: ANALYTICS_SOURCE,
+      practice_id: 'meditation_timer',
+      practice_type: 'meditation',
+    });
+
     setMeditationTimer(prev => ({ ...prev, isRunning: true }));
+  };
+
+  const handleTechniqueToggle = (techniqueTitle: string, index: number) => {
+    const isOpening = selectedTechnique !== techniqueTitle;
+
+    if (isOpening) {
+      trackEvent(AnalyticsEvents.PRACTICE_OPENED, {
+        source: ANALYTICS_SOURCE,
+        practice_id: `relaxation_technique_${index + 1}`,
+        practice_type: 'relaxation',
+      });
+    }
+
+    setSelectedTechnique(isOpening ? techniqueTitle : null);
   };
 
   const pauseMeditation = () => {
@@ -172,7 +205,6 @@ const RelaxationPage: React.FC = () => {
     }
     
     if (totalSeconds > 0) {
-      console.log('Setting meditation timer to:', totalSeconds);
       setMeditationTimer({
         isRunning: false,
         timeRemaining: totalSeconds,
@@ -525,7 +557,7 @@ const RelaxationPage: React.FC = () => {
                 cursor: 'pointer',
                 transition: 'all 0.2s ease'
               }}
-              onClick={() => setSelectedTechnique(selectedTechnique === technique.title ? null : technique.title)}
+              onClick={() => handleTechniqueToggle(technique.title, index)}
             >
               <h4 style={{ margin: '0 0 8px 0' }}>{technique.title}</h4>
               <p style={{ margin: '0 0 12px 0', fontSize: '14px', color: 'var(--hint-color)' }}>

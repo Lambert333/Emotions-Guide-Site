@@ -1,22 +1,41 @@
-import { initializeApp } from 'firebase/app';
+import { initializeApp, type FirebaseOptions } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getDatabase } from 'firebase/database';
 
-// Конфигурация Firebase из Android приложения
-const firebaseConfig = {
-  apiKey: "AIzaSyCw7Lb9WcJo10G3kc3rPxBqB662fbLmjbI",
-  authDomain: "emotions-guide-c173c.firebaseapp.com",
-  databaseURL: "https://emotions-guide-c173c-default-rtdb.firebaseio.com",
-  projectId: "emotions-guide-c173c",
-  storageBucket: "emotions-guide-c173c.firebasestorage.app",
-  messagingSenderId: "132215609179",
-  appId: "1:132215609179:web:18a9da4eb49b2f64042c7e"
+export const firebaseConfig: FirebaseOptions = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
-// Инициализация Firebase
+if (import.meta.env.DEV) {
+  const missingConfigKeys = Object.entries({
+    VITE_FIREBASE_API_KEY: firebaseConfig.apiKey,
+    VITE_FIREBASE_AUTH_DOMAIN: firebaseConfig.authDomain,
+    VITE_FIREBASE_DATABASE_URL: firebaseConfig.databaseURL,
+    VITE_FIREBASE_PROJECT_ID: firebaseConfig.projectId,
+    VITE_FIREBASE_STORAGE_BUCKET: firebaseConfig.storageBucket,
+    VITE_FIREBASE_MESSAGING_SENDER_ID: firebaseConfig.messagingSenderId,
+    VITE_FIREBASE_APP_ID: firebaseConfig.appId,
+  })
+    .filter(([, value]) => !value)
+    .map(([key]) => key);
+
+  if (missingConfigKeys.length > 0) {
+    console.warn(
+      '[Firebase] Missing frontend environment variables:',
+      missingConfigKeys.join(', ')
+    );
+  }
+}
+
 const app = initializeApp(firebaseConfig);
 
-// Инициализация сервисов
 export const auth = getAuth(app);
 export const database = getDatabase(app);
 

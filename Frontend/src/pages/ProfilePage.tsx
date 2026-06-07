@@ -2,6 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { User, Calendar, Save, Edit3, LogOut } from 'lucide-react';
 import { profileAPI, authAPI } from '../services/api';
 import { useNavigate } from 'react-router-dom';
+import {
+  ANALYTICS_SOURCE,
+  AnalyticsEvents,
+} from '../shared/analytics/analyticsEvents';
+import { trackEvent } from '../shared/analytics/firebaseAnalytics';
 
 
 const ProfilePage: React.FC = () => {
@@ -88,6 +93,9 @@ const ProfilePage: React.FC = () => {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
+      trackEvent(AnalyticsEvents.LOGOUT_COMPLETED, {
+        source: ANALYTICS_SOURCE,
+      });
       localStorage.removeItem('authToken');
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('userId');

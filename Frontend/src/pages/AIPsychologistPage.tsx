@@ -10,6 +10,12 @@ import {
   Sparkles,
 } from "lucide-react";
 import { chatAPI } from "../services/api";
+import {
+  ANALYTICS_SOURCE,
+  AnalyticsEvents,
+  getMessageLengthGroup,
+} from "../shared/analytics/analyticsEvents";
+import { trackEvent } from "../shared/analytics/firebaseAnalytics";
 
 interface ChatMessage {
   messageId: string;
@@ -110,6 +116,7 @@ const AIPsychologistPage: React.FC = () => {
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || sending) return;
 
+    const messageText = inputMessage.trim();
     setSending(true);
     setError("");
     setAiPending(true);
@@ -120,7 +127,7 @@ const AIPsychologistPage: React.FC = () => {
       const userMessage: ChatMessage = {
         messageId: Date.now().toString(),
         userId: "current-user",
-        content: inputMessage.trim(),
+        content: messageText,
         isUser: true,
         timestamp: new Date().toISOString(),
       };
@@ -130,8 +137,12 @@ const AIPsychologistPage: React.FC = () => {
 
       // Send message via API
       await chatAPI.sendMessage({
-        content: inputMessage.trim(),
+        content: messageText,
         isUser: true,
+      });
+      trackEvent(AnalyticsEvents.AI_MESSAGE_SENT, {
+        source: ANALYTICS_SOURCE,
+        message_length_group: getMessageLengthGroup(messageText),
       });
 
       // Reload to get AI response
@@ -158,6 +169,10 @@ const AIPsychologistPage: React.FC = () => {
 
     try {
       await chatAPI.analyzeEmotions();
+      trackEvent(AnalyticsEvents.AI_RECOMMENDATION_COMPLETED, {
+        source: ANALYTICS_SOURCE,
+        trigger: "manual",
+      });
       // Reload messages to get analysis results
       await loadChatData();
     } catch (error: any) {

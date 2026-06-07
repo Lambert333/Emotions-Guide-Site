@@ -1,4 +1,9 @@
 import React, { useEffect } from 'react';
+import {
+  ANALYTICS_SOURCE,
+  AnalyticsEvents,
+} from '../shared/analytics/analyticsEvents';
+import { trackEvent } from '../shared/analytics/firebaseAnalytics';
 
 declare global {
   interface Window {
@@ -12,6 +17,11 @@ declare global {
 
 const AboutPage: React.FC = () => {
   useEffect(() => {
+    trackEvent(AnalyticsEvents.FEEDBACK_OPENED, {
+      source: ANALYTICS_SOURCE,
+      entry_point: 'about',
+    });
+
     // Load Yandex forms script
     const script = document.createElement('script');
     script.src = 'https://forms.yandex.ru/_static/embed.js';

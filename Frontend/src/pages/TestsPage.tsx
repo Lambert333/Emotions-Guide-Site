@@ -13,6 +13,12 @@ import {
   Award,
 } from "lucide-react";
 import { testsAPI } from "../services/api";
+import {
+  ANALYTICS_SOURCE,
+  AnalyticsEvents,
+  type AnalyticsTestType,
+} from "../shared/analytics/analyticsEvents";
+import { trackEvent } from "../shared/analytics/firebaseAnalytics";
 
 interface TestQuestion {
   id: number;
@@ -65,7 +71,7 @@ interface ScoreDisplay {
 }
 
 interface TestInfo {
-  id: string;
+  id: AnalyticsTestType;
   title: string;
   description: string;
   icon: React.ReactNode;
@@ -227,6 +233,11 @@ const TestsPage: React.FC = () => {
       setCurrentQuestion(0);
       setTestCompleted(false);
       setTestResult(null);
+      trackEvent(AnalyticsEvents.TEST_STARTED, {
+        source: ANALYTICS_SOURCE,
+        test_type: test.id,
+        question_count: loadedQuestions.length || test.questionCount,
+      });
     } catch (err) {
       console.error("Error loading test:", err);
       setError("Ошибка загрузки теста");
@@ -248,7 +259,7 @@ const TestsPage: React.FC = () => {
     } else {
       // If it's the last question, automatically complete the test
       try {
-        await completeTest();
+        await completeTest(newAnswers);
       } catch (err) {
         console.error("Error in completeTest:", err);
         // Ensure loading is set to false in case of error
@@ -257,7 +268,7 @@ const TestsPage: React.FC = () => {
     }
   };
 
-  const completeTest = async () => {
+  const completeTest = async (answersToSubmit = answers) => {
     if (selectedTest === null) {
       setLoading(false);
       return;
@@ -267,7 +278,7 @@ const TestsPage: React.FC = () => {
     setError("");
     try {
       // Check all answered
-      if (answers.some((a) => a === 0)) {
+      if (answersToSubmit.some((a) => a === 0)) {
         setError("Пожалуйста, ответьте на все вопросы");
         setLoading(false);
         return;
@@ -305,7 +316,7 @@ const TestsPage: React.FC = () => {
           throw new Error("Unknown test type");
       }
 
-      const response = await processCall(answers);
+      const response = await processCall(answersToSubmit);
 
       // Map response to generic TestResult
       result = {
@@ -321,6 +332,11 @@ const TestsPage: React.FC = () => {
       setTestResult(result);
       setTestCompleted(true);
       setTestInProgress(false);
+      trackEvent(AnalyticsEvents.TEST_COMPLETED, {
+        source: ANALYTICS_SOURCE,
+        test_type: selectedTest.id,
+        question_count: answersToSubmit.length,
+      });
     } catch (err) {
       console.error("Error completing test:", err);
       setError("Ошибка при обработке результатов теста");

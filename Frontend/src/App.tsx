@@ -12,6 +12,7 @@ import RelaxationPage from "./pages/RelaxationPage";
 import Navigation from "./components/Navigation";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Footer from "./components/Footer";
+import { AnalyticsRouteTracker } from "./shared/analytics/AnalyticsRouteTracker";
 
 function App() {
   const [collapsed, setCollapsed] = useState(false);
@@ -54,6 +55,7 @@ function App() {
 
   return (
     <Router>
+      <AnalyticsRouteTracker />
       <div className="App">
         {/* Fixed Top Header */}
         <header

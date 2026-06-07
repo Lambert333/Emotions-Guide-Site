@@ -1,6 +1,14 @@
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
 import { authAPI, RegisterRequest, LoginRequest } from '../services/api';
+import {
+  ANALYTICS_SOURCE,
+  AnalyticsEvents,
+} from '../shared/analytics/analyticsEvents';
+import {
+  identifyAnalyticsUser,
+  trackEvent,
+} from '../shared/analytics/firebaseAnalytics';
 
 const AuthPage: React.FC = () => {
   const [isRegister, setIsRegister] = useState(false);
@@ -20,6 +28,19 @@ const AuthPage: React.FC = () => {
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
+  };
+
+  const handleAuthModeToggle = () => {
+    const nextIsRegister = !isRegister;
+    setIsRegister(nextIsRegister);
+    setError('');
+
+    if (nextIsRegister) {
+      trackEvent(AnalyticsEvents.SIGN_UP_STARTED, {
+        source: ANALYTICS_SOURCE,
+        method: 'email',
+      });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -53,7 +74,12 @@ const AuthPage: React.FC = () => {
         localStorage.setItem('authToken', response.accessToken);
         localStorage.setItem('refreshToken', response.refreshToken);
         localStorage.setItem('userId', response.userId);
-        
+        identifyAnalyticsUser(response.userId);
+        trackEvent(AnalyticsEvents.SIGN_UP_COMPLETED, {
+          source: ANALYTICS_SOURCE,
+          method: 'email',
+        });
+
         toast.success('Регистрация успешна!');
         window.location.href = '/';
       } else {
@@ -67,7 +93,12 @@ const AuthPage: React.FC = () => {
         localStorage.setItem('authToken', response.accessToken);
         localStorage.setItem('refreshToken', response.refreshToken);
         localStorage.setItem('userId', response.userId);
-        
+        identifyAnalyticsUser(response.userId);
+        trackEvent(AnalyticsEvents.LOGIN_COMPLETED, {
+          source: ANALYTICS_SOURCE,
+          method: 'email',
+        });
+
         toast.success('Вход выполнен успешно!');
         window.location.href = '/';
       }
@@ -197,7 +228,7 @@ const AuthPage: React.FC = () => {
         <button
           className="btn"
           style={{ background: 'var(--hint-color)', width: '100%' }}
-          onClick={() => setIsRegister(!isRegister)}
+          onClick={handleAuthModeToggle}
           disabled={loading}
         >
           {isRegister ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Зарегистрироваться'}

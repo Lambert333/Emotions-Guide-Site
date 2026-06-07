@@ -2,6 +2,12 @@ import React, { useState, useEffect } from "react";
 import { BarChart3, TrendingUp, Calendar, RefreshCw } from "lucide-react";
 import { analyticsAPI } from "../services/api";
 import {
+  ANALYTICS_SOURCE,
+  AnalyticsEvents,
+  type AnalyticsPeriod,
+} from "../shared/analytics/analyticsEvents";
+import { trackEvent } from "../shared/analytics/firebaseAnalytics";
+import {
   BarChart,
   Bar,
   XAxis,
@@ -34,7 +40,7 @@ const ChartsPage: React.FC = () => {
   const [, setTestResults] = useState<TestResult[]>([]);
   const [chartData, setChartData] = useState<ChartData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState<"week" | "month" | "all">("month");
+  const [timeRange, setTimeRange] = useState<AnalyticsPeriod>("month");
   const [selectedMetric, setSelectedMetric] = useState<
     "wellbeing" | "activity" | "mood" | "all"
   >("all");
@@ -49,6 +55,23 @@ const ChartsPage: React.FC = () => {
   useEffect(() => {
     loadTestResults();
   }, [timeRange]);
+
+  useEffect(() => {
+    trackEvent(AnalyticsEvents.ANALYTICS_OPENED, {
+      source: ANALYTICS_SOURCE,
+    });
+  }, []);
+
+  const handleTimeRangeChange = (nextRange: AnalyticsPeriod) => {
+    if (nextRange !== timeRange) {
+      trackEvent(AnalyticsEvents.PERIOD_CHANGED, {
+        source: ANALYTICS_SOURCE,
+        period: nextRange,
+      });
+    }
+
+    setTimeRange(nextRange);
+  };
 
   const loadTestResults = async () => {
     try {
@@ -311,14 +334,14 @@ const ChartsPage: React.FC = () => {
 
   const renderTimeRangeFilter = () => (
     <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
-      {[
+      {([
         { value: "week", label: "Неделя" },
         { value: "month", label: "Месяц" },
         { value: "all", label: "Все время" },
-      ].map(({ value, label }) => (
+      ] as Array<{ value: AnalyticsPeriod; label: string }>).map(({ value, label }) => (
         <button
           key={value}
-          onClick={() => setTimeRange(value as any)}
+          onClick={() => handleTimeRangeChange(value)}
           style={{
             padding: "8px 12px",
             border: `1px solid ${
